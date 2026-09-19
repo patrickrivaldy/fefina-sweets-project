@@ -98,7 +98,6 @@ export default function Sidebar() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
     router.replace("/login");
   };
 

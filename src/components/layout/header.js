@@ -7,7 +7,6 @@ export default function Header() {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
     router.replace("/login");
   };
 

@@ -1,20 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function Home() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
-
-    if (isLoggedIn !== "true") {
-      router.replace("/login");
-    }
-  }, [router]);
-
   return (
     <DashboardLayout>
       <div>
@@ -27,7 +15,10 @@ export default function Home() {
         </p>
 
         <div className="mt-6 rounded-2xl border border-orange-100 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Area dashboard</p>
+          <p className="text-sm text-slate-500">
+            Area dashboard
+          </p>
+
           <h2 className="mt-2 text-lg font-semibold text-slate-800">
             Dashboard Fefina Sweets
           </h2>
