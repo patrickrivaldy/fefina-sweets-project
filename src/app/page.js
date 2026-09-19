@@ -3,6 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+<<<<<<< HEAD
+=======
+import DashboardCard from "@/components/layout/DashboardCard";
+>>>>>>> origin/main
 
 export default function Home() {
   const router = useRouter();
@@ -26,12 +30,17 @@ export default function Home() {
           Pantau aktivitas dan informasi usaha Fefina Sweets.
         </p>
 
+<<<<<<< HEAD
         <div className="mt-6 rounded-2xl border border-orange-100 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Area dashboard</p>
 
           <h2 className="mt-2 text-lg font-semibold text-slate-800">
             Dashboard Fefina Sweets
           </h2>
+=======
+        <div className="mt-6">
+          <DashboardCard />
+>>>>>>> origin/main
         </div>
       </div>
     </DashboardLayout>
