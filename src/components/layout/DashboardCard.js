@@ -92,7 +92,7 @@ export default function DashboardCard() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] border-collapse text-left">
+          <table className="w-full min-w-850px border-collapse text-left">
             <thead>
               <tr className="bg-slate-200">
                 <th className="px-6 py-4 text-sm font-bold text-slate-900">
