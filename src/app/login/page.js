@@ -122,7 +122,7 @@ export default function LoginPage() {
           </div>
 
           {/* Dekorasi */}
-          <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full border-[35px] border-orange-300/30" />
+          <div className="pointer-events-none absolute -bottom-24 -right-24 h-64 w-64 rounded-full border-35px border-orange-300/30" />
 
           <div className="pointer-events-none absolute -right-16 top-24 h-40 w-40 rounded-full bg-orange-300/20" />
         </section>
