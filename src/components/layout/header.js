@@ -2,18 +2,31 @@
 
 import { Bell, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function Header() {
   const router = useRouter();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut({
+      scope: "local",
+    });
+
+    if (error) {
+      console.error("Logout Supabase gagal:", error);
+      return;
+    }
+
     router.replace("/login");
+    router.refresh();
   };
 
   return (
     <header className="flex items-center justify-between border-b border-slate-200 bg-white px-8 py-5">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-900">Dashboard</h2>
+        <h2 className="text-2xl font-semibold text-slate-900">
+          Dashboard
+        </h2>
 
         <p className="mt-1 text-sm text-slate-500">
           Selamat datang di sistem Fefina Sweets
@@ -37,9 +50,13 @@ export default function Header() {
           </div>
 
           <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-slate-700">Admin</p>
+            <p className="text-sm font-semibold text-slate-700">
+              Admin
+            </p>
 
-            <p className="text-xs text-slate-400">Administrator</p>
+            <p className="text-xs text-slate-400">
+              Administrator
+            </p>
           </div>
         </div>
 

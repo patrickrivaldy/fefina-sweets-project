@@ -22,7 +22,9 @@ export default function ProdukPage() {
     let ignore = false;
 
     const loadProducts = async () => {
-      const { data, error } = await supabase.from("products").select("*");
+      const { data, error } = await supabase
+        .from("products")
+        .select("*");
 
       if (ignore) {
         return;
@@ -30,6 +32,7 @@ export default function ProdukPage() {
 
       if (error) {
         console.error("Gagal mengambil data produk:", error);
+
         setError("Data produk gagal dimuat.");
         setProducts([]);
       } else {
@@ -53,30 +56,39 @@ export default function ProdukPage() {
   const handleAddProduct = async (productData) => {
     setSubmitting(true);
 
-    const { error } = await supabase.from("products").insert([productData]);
+    try {
+      const { error } = await supabase
+        .from("products")
+        .insert([productData]);
 
-    if (error) {
-      console.error("Gagal menambahkan produk:", error);
-      setSubmitting(false);
+      if (error) {
+        console.error("Gagal menambahkan produk:", error);
 
-      throw new Error(error.message || "Produk gagal ditambahkan ke database.");
-    }
+        throw new Error(
+          error.message || "Produk gagal ditambahkan ke database."
+        );
+      }
 
-    // Ambil kembali data produk setelah berhasil INSERT
-    const { data, error: fetchError } = await supabase
-      .from("products")
-      .select("*");
+      // Ambil kembali data produk setelah INSERT berhasil
+      const { data, error: fetchError } = await supabase
+        .from("products")
+        .select("*");
 
-    if (fetchError) {
-      console.error(
-        "Produk berhasil ditambahkan, tetapi gagal memuat ulang data:",
-        fetchError,
-      );
-    } else {
+      if (fetchError) {
+        console.error(
+          "Produk berhasil ditambahkan, tetapi gagal memuat ulang data:",
+          fetchError
+        );
+
+        throw new Error(
+          "Produk berhasil ditambahkan, tetapi data tabel gagal diperbarui."
+        );
+      }
+
       setProducts(data || []);
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   };
 
   return (
@@ -84,7 +96,9 @@ export default function ProdukPage() {
       <div className="space-y-6">
         {/* Header halaman */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Produk</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Produk
+          </h1>
 
           <p className="mt-2 text-sm text-slate-500">
             Kelola data produk Fefina Sweets.
@@ -123,7 +137,9 @@ export default function ProdukPage() {
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-12 text-center">
-            <p className="text-sm font-medium text-red-600">{error}</p>
+            <p className="text-sm font-medium text-red-600">
+              {error}
+            </p>
           </div>
         ) : (
           <ProductTable products={products} />

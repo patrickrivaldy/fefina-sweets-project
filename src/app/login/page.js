@@ -25,29 +25,54 @@ export default function LoginPage() {
   // LOGIN SUPABASE AUTH
   // =========================
   const handleLogin = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+  try {
+    console.log("Memulai proses login...");
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
       password,
+    });
+
+    console.log("Hasil login Supabase:", {
+      user: data?.user,
+      session: data?.session,
+      error,
     });
 
     if (error) {
       console.error("Login Supabase gagal:", error);
 
-      setError("Email atau password yang dimasukkan salah.");
+      setError(error.message || "Email atau password yang dimasukkan salah.");
       setLoading(false);
 
       return;
     }
 
-    // Login berhasil
+    if (!data?.session || !data?.user) {
+      console.error("Login berhasil tetapi session/user tidak ditemukan.");
+
+      setError("Login berhasil, tetapi session tidak ditemukan.");
+      setLoading(false);
+
+      return;
+    }
+
+    console.log("Login berhasil:", data.user.email);
+
     router.replace("/");
     router.refresh();
-  };
+  } catch (error) {
+    console.error("Terjadi kesalahan saat login:", error);
+
+    setError("Terjadi kesalahan saat menghubungkan ke server.");
+    setLoading(false);
+  }
+};
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#FFF4E8] p-4 sm:p-6">

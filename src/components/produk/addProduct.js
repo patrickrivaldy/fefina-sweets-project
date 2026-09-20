@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
-export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
+export default function AddProduct({
+  isOpen,
+  onClose,
+  onSubmit,
+  submitting,
+}) {
   const [form, setForm] = useState({
     nama_produk: "",
     hpp_estimasi: "",
@@ -32,6 +37,9 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     event.preventDefault();
     setFormError("");
 
+    // =========================
+    // VALIDASI FORM
+    // =========================
     if (!form.nama_produk.trim()) {
       setFormError("Nama produk wajib diisi.");
       return;
@@ -52,6 +60,21 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
       return;
     }
 
+    if (Number(form.hpp_estimasi) < 0) {
+      setFormError("HPP tidak boleh kurang dari 0.");
+      return;
+    }
+
+    if (Number(form.harga_jual) < 0) {
+      setFormError("Harga jual tidak boleh kurang dari 0.");
+      return;
+    }
+
+    if (Number(form.stok) < 0) {
+      setFormError("Stok tidak boleh kurang dari 0.");
+      return;
+    }
+
     try {
       await onSubmit({
         nama_produk: form.nama_produk.trim(),
@@ -59,9 +82,13 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
         harga_jual: Number(form.harga_jual),
         stok: Number(form.stok),
         deskripsi: form.deskripsi.trim() || null,
+
+        // Foto belum di-upload.
+        // Akan dikerjakan pada tahap Supabase Storage.
         foto: null,
       });
 
+      // Reset form setelah INSERT berhasil
       setForm({
         nama_produk: "",
         hpp_estimasi: "",
@@ -72,7 +99,11 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
 
       onClose();
     } catch (error) {
-      setFormError(error.message || "Produk gagal disimpan.");
+      console.error("Gagal menyimpan produk:", error);
+
+      setFormError(
+        error.message || "Produk gagal disimpan."
+      );
     }
   };
 
@@ -82,7 +113,9 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
         {/* Header Modal */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Tambah Produk</h2>
+            <h2 className="text-xl font-bold text-slate-900">
+              Tambah Produk
+            </h2>
 
             <p className="mt-1 text-sm text-slate-500">
               Masukkan informasi produk baru.
@@ -93,7 +126,7 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
             aria-label="Tutup"
           >
             ×
@@ -106,7 +139,9 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
             {/* Error */}
             {formError && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                <p className="text-sm text-red-600">{formError}</p>
+                <p className="text-sm text-red-600">
+                  {formError}
+                </p>
               </div>
             )}
 
@@ -229,7 +264,8 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
 
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4">
                 <p className="text-sm text-slate-500">
-                  Upload foto akan diintegrasikan pada tahap Supabase Storage.
+                  Upload foto akan diintegrasikan pada tahap
+                  Supabase Storage.
                 </p>
               </div>
             </div>
