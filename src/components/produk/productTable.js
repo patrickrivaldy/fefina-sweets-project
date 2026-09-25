@@ -1,4 +1,4 @@
-export default function ProductTable({ products = [] }) {
+export default function ProductTable({ products = [], onEdit }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -86,6 +86,7 @@ export default function ProductTable({ products = [] }) {
                   <td className="px-5 py-4 text-center">
                     <button
                       type="button"
+                      onClick={() => onEdit(product)}
                       className="rounded-lg px-3 py-2 text-sm font-medium text-orange-600 transition hover:bg-orange-50"
                     >
                       Edit

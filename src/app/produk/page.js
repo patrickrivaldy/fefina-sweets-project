@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ProductTable from "@/components/produk/productTable";
 import AddProductModal from "@/components/produk/addProduct";
+import EditProductModal from "@/components/produk/editProduct";
 import { supabase } from "@/lib/supabase";
 
 export default function ProdukPage() {
@@ -13,23 +14,39 @@ export default function ProdukPage() {
   const [error, setError] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // =========================
+  // PILIH PRODUK UNTUK EDIT
+  // =========================
+  const handleEditProduct = (product) => {
+    setSelectedProduct(product);
+    setShowEditModal(true);
+  };
 
   // =========================
   // TOAST NOTIFICATION
   // =========================
   const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
 
   const showToast = (type, message) => {
-    setToast({
-      type,
-      message,
-    });
+  if (toastTimerRef.current) {
+    clearTimeout(toastTimerRef.current);
+  }
 
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
-  };
+  setToast({
+    type,
+    message,
+  });
+
+  toastTimerRef.current = setTimeout(() => {
+    setToast(null);
+    toastTimerRef.current = null;
+  }, 5000);
+};
 
   // =========================
   // GET / READ DATA PRODUK
@@ -78,10 +95,14 @@ export default function ProdukPage() {
         .insert([productData]);
 
       if (error) {
-        console.error("Gagal menambahkan produk:", error);
+        console.error(
+          "Gagal menambahkan produk:",
+          error
+        );
 
         throw new Error(
-          error.message || "Produk gagal ditambahkan ke database."
+          error.message ||
+            "Produk gagal ditambahkan ke database."
         );
       }
 
@@ -103,13 +124,144 @@ export default function ProdukPage() {
 
       setProducts(data || []);
 
+      // Toast sukses
+      showToast(
+        "success",
+        "Produk berhasil ditambahkan."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // =========================
+  // UPDATE / EDIT PRODUK
+  // =========================
+  const handleEditProductSubmit = async (productData) => {
+    setSubmitting(true);
+
+    try {
+      const {
+        id_produk,
+        imageFile,
+        ...updateData
+      } = productData;
+
+      // =========================
+      // UPLOAD FOTO BARU
+      // =========================
+      if (imageFile) {
+        const fileExtension =
+          imageFile.name
+            .split(".")
+            .pop()
+            ?.toLowerCase() || "jpg";
+
+        const fileName = `${crypto.randomUUID()}.${fileExtension}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError } =
+          await supabase.storage
+            .from("foto-produk")
+            .upload(filePath, imageFile, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: imageFile.type,
+            });
+
+        if (uploadError) {
+          console.error(
+            "Gagal upload foto produk:",
+            uploadError
+          );
+
+          throw new Error(
+            uploadError.message ||
+              "Foto produk gagal diupload."
+          );
+        }
+
+        // =========================
+        // AMBIL PUBLIC URL FOTO
+        // =========================
+        const { data: publicUrlData } =
+          supabase.storage
+            .from("foto-produk")
+            .getPublicUrl(filePath);
+
+        updateData.foto =
+          publicUrlData.publicUrl;
+      }
+
+      // =========================
+      // UPDATE DATA PRODUK
+      // =========================
+      const { error } = await supabase
+        .from("products")
+        .update(updateData)
+        .eq("id_produk", id_produk);
+
+      if (error) {
+        console.error(
+          "Gagal memperbarui produk:",
+          error
+        );
+
+        throw new Error(
+          error.message ||
+            "Produk gagal diperbarui."
+        );
+      }
+
+      // =========================
+      // AMBIL ULANG DATA PRODUK
+      // =========================
+      const { data, error: fetchError } =
+        await supabase
+          .from("products")
+          .select("*");
+
+      if (fetchError) {
+        console.error(
+          "Produk berhasil diperbarui, tetapi gagal memuat ulang data:",
+          fetchError
+        );
+
+        throw new Error(
+          "Produk berhasil diperbarui, tetapi data tabel gagal diperbarui."
+        );
+      }
+
+      setProducts(data || []);
+
+      // =========================
+      // TUTUP MODAL
+      // =========================
+      setShowEditModal(false);
+      setSelectedProduct(null);
+
       // =========================
       // TOAST SUKSES
       // =========================
       showToast(
         "success",
-        "Produk berhasil ditambahkan."
+        imageFile
+          ? "Produk dan foto berhasil diperbarui."
+          : "Produk berhasil diperbarui."
       );
+    } catch (error) {
+      console.error(
+        "Gagal memperbarui produk:",
+        error
+      );
+
+      showToast(
+        "error",
+        error.message ||
+          "Produk gagal diperbarui."
+      );
+
+      throw error;
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +289,9 @@ export default function ProdukPage() {
                   : "bg-red-500 text-white"
               }`}
             >
-              {toast.type === "success" ? "✓" : "!"}
+              {toast.type === "success"
+                ? "✓"
+                : "!"}
             </div>
 
             {/* Isi Toast */}
@@ -168,7 +322,14 @@ export default function ProdukPage() {
             {/* Tombol Tutup Toast */}
             <button
               type="button"
-              onClick={() => setToast(null)}
+              onClick={() => {
+                if (toastTimerRef.current) {
+                  clearTimeout(toastTimerRef.current);
+                  toastTimerRef.current = null;
+                }
+
+                setToast(null);
+              }}
               className={`text-lg leading-none ${
                 toast.type === "success"
                   ? "text-green-500 hover:text-green-700"
@@ -201,7 +362,9 @@ export default function ProdukPage() {
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
               placeholder="Cari nama produk..."
               className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-4 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100"
             />
@@ -210,7 +373,9 @@ export default function ProdukPage() {
           {/* Tambah Produk */}
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
+            onClick={() =>
+              setShowAddModal(true)
+            }
             className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
           >
             + Tambah Produk
@@ -231,16 +396,37 @@ export default function ProdukPage() {
             </p>
           </div>
         ) : (
-          <ProductTable products={products} />
+          <ProductTable
+            products={products}
+            onEdit={handleEditProduct}
+          />
         )}
 
         {/* Modal Tambah Produk */}
         <AddProductModal
           isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
+          onClose={() =>
+            setShowAddModal(false)
+          }
           onSubmit={handleAddProduct}
           submitting={submitting}
           onToast={showToast}
+        />
+
+        {/* Modal Edit Produk */}
+        <EditProductModal
+          key={
+            selectedProduct?.id_produk ||
+            "edit-product"
+          }
+          isOpen={showEditModal}
+          product={selectedProduct}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedProduct(null);
+          }}
+          onSubmit={handleEditProductSubmit}
+          submitting={submitting}
         />
       </div>
     </DashboardLayout>
