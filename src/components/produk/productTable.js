@@ -1,4 +1,4 @@
-export default function ProductTable({ products = [], onEdit }) {
+export default function ProductTable({ products = [], onEdit, onDelete }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -90,6 +90,14 @@ export default function ProductTable({ products = [], onEdit }) {
                       className="rounded-lg px-3 py-2 text-sm font-medium text-orange-600 transition hover:bg-orange-50"
                     >
                       Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onDelete(product)}
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    >
+                      Hapus
                     </button>
                   </td>
                 </tr>

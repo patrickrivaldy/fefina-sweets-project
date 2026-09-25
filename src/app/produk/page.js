@@ -27,26 +27,100 @@ export default function ProdukPage() {
   };
 
   // =========================
+  // HAPUS / NONAKTIFKAN PRODUK
+  // =========================
+  const handleDeleteProduct = async (product) => {
+    const confirmed = window.confirm(
+      `Apakah Anda yakin ingin menghapus produk "${product.nama_produk}"?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({
+          is_active: false,
+        })
+        .eq("id_produk", product.id_produk);
+
+      if (error) {
+        console.error(
+          "Gagal menghapus produk:",
+          error
+        );
+
+        throw new Error(
+          error.message ||
+            "Produk gagal dihapus."
+        );
+      }
+
+      // Ambil kembali data produk
+      const { data, error: fetchError } =
+        await supabase
+          .from("products")
+          .select("*");
+
+      if (fetchError) {
+        console.error(
+          "Produk berhasil dinonaktifkan, tetapi gagal memuat ulang data:",
+          fetchError
+        );
+
+        throw new Error(
+          "Produk berhasil dihapus, tetapi data tabel gagal diperbarui."
+        );
+      }
+
+      setProducts(data || []);
+
+      // Toast sukses
+      showToast(
+        "success",
+        "Produk berhasil dihapus."
+      );
+    } catch (error) {
+      console.error(
+        "Gagal menghapus produk:",
+        error
+      );
+
+      showToast(
+        "error",
+        error.message ||
+          "Produk gagal dihapus."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // =========================
   // TOAST NOTIFICATION
   // =========================
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
 
   const showToast = (type, message) => {
-  if (toastTimerRef.current) {
-    clearTimeout(toastTimerRef.current);
-  }
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
 
-  setToast({
-    type,
-    message,
-  });
+    setToast({
+      type,
+      message,
+    });
 
-  toastTimerRef.current = setTimeout(() => {
-    setToast(null);
-    toastTimerRef.current = null;
-  }, 5000);
-};
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 5000);
+  };
 
   // =========================
   // GET / READ DATA PRODUK
@@ -64,7 +138,10 @@ export default function ProdukPage() {
       }
 
       if (error) {
-        console.error("Gagal mengambil data produk:", error);
+        console.error(
+          "Gagal mengambil data produk:",
+          error
+        );
 
         setError("Data produk gagal dimuat.");
         setProducts([]);
@@ -107,9 +184,10 @@ export default function ProdukPage() {
       }
 
       // Ambil kembali data produk setelah INSERT berhasil
-      const { data, error: fetchError } = await supabase
-        .from("products")
-        .select("*");
+      const { data, error: fetchError } =
+        await supabase
+          .from("products")
+          .select("*");
 
       if (fetchError) {
         console.error(
@@ -267,13 +345,22 @@ export default function ProdukPage() {
     }
   };
 
+  // =========================
+  // FILTER SEARCH PRODUK
+  // =========================
+  const filteredProducts = products.filter((product) =>
+    product.nama_produk
+      ?.toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
   return (
     <DashboardLayout>
       {/* =========================
           TOAST NOTIFICATION
       ========================= */}
       {toast && (
-        <div className="fixed right-6 top-6 z-[100]">
+        <div className="fixed right-6 top-6 z-100">
           <div
             className={`flex min-w-[320px] items-start gap-3 rounded-xl border px-4 py-4 shadow-lg ${
               toast.type === "success"
@@ -395,10 +482,46 @@ export default function ProdukPage() {
               {error}
             </p>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          search.trim() ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-3xl">
+                🔍
+              </div>
+
+              <h3 className="mt-5 text-lg font-semibold text-slate-800">
+                Produk tidak ditemukan
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                Tidak ada produk yang sesuai dengan
+                pencarian{" "}
+                <span className="font-medium text-slate-700">
+                  &ldquo;{search}&rdquo;
+                </span>
+                .
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-3xl">
+                📦
+              </div>
+
+              <h3 className="mt-5 text-lg font-semibold text-slate-800">
+                Belum ada produk
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                Belum ada data produk yang tersedia, silahkan tambahkan produk.
+              </p>
+            </div>
+          )
         ) : (
           <ProductTable
-            products={products}
+            products={filteredProducts}
             onEdit={handleEditProduct}
+            onDelete={handleDeleteProduct}
           />
         )}
 
