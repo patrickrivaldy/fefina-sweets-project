@@ -109,10 +109,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     event.preventDefault();
     setFormError("");
 
-    // =========================
-    // VALIDASI FORM
-    // =========================
-
     if (!form.nama_produk.trim()) {
       setFormError("Nama produk wajib diisi.");
       return;
@@ -149,10 +145,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     }
 
     try {
-      // =========================
-      // UPLOAD FOTO KE SUPABASE
-      // =========================
-
       let photoUrl = null;
 
       if (imageFile) {
@@ -162,8 +154,9 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
         const fileName = `${crypto.randomUUID()}.${fileExtension}`;
         const filePath = `products/${fileName}`;
 
+        // PERBAIKAN 1: Mengubah FOTO-PRODUK menjadi foto-produk
         const { error: uploadError } = await supabase.storage
-          .from("FOTO-PRODUK")
+          .from("foto-produk")
           .upload(filePath, imageFile, {
             cacheControl: "3600",
             upsert: false,
@@ -177,20 +170,13 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
           );
         }
 
-        // =========================
-        // AMBIL PUBLIC URL FOTO
-        // =========================
-
+        // PERBAIKAN 2: Mengubah FOTO-PRODUK menjadi foto-produk
         const { data: publicUrlData } = supabase.storage
-          .from("FOTO-PRODUK")
+          .from("foto-produk")
           .getPublicUrl(filePath);
 
         photoUrl = publicUrlData.publicUrl;
       }
-
-      // =========================
-      // INSERT DATA PRODUK
-      // =========================
 
       await onSubmit({
         nama_produk: form.nama_produk.trim(),
@@ -201,13 +187,10 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
         foto: photoUrl,
       });
 
-      // Reset form setelah INSERT berhasil
       resetForm();
-
       onClose();
     } catch (error) {
       console.error("Gagal menyimpan produk:", error);
-
       setFormError(error.message || "Produk gagal disimpan.");
     }
   };

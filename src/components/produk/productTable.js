@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export default function ProductTable({ products = [] }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -44,7 +42,7 @@ export default function ProductTable({ products = [] }) {
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange-50">
                         {product.foto ? (
-                          <Image
+                          <img
                             src={product.foto}
                             alt={product.nama_produk}
                             className="h-full w-full object-cover"
