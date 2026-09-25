@@ -16,6 +16,22 @@ export default function ProdukPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // =========================
+  // TOAST NOTIFICATION
+  // =========================
+  const [toast, setToast] = useState(null);
+
+  const showToast = (type, message) => {
+    setToast({
+      type,
+      message,
+    });
+
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
+
+  // =========================
   // GET / READ DATA PRODUK
   // =========================
   useEffect(() => {
@@ -86,6 +102,14 @@ export default function ProdukPage() {
       }
 
       setProducts(data || []);
+
+      // =========================
+      // TOAST SUKSES
+      // =========================
+      showToast(
+        "success",
+        "Produk berhasil ditambahkan."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -93,6 +117,71 @@ export default function ProdukPage() {
 
   return (
     <DashboardLayout>
+      {/* =========================
+          TOAST NOTIFICATION
+      ========================= */}
+      {toast && (
+        <div className="fixed right-6 top-6 z-[100]">
+          <div
+            className={`flex min-w-[320px] items-start gap-3 rounded-xl border px-4 py-4 shadow-lg ${
+              toast.type === "success"
+                ? "border-green-200 bg-green-50"
+                : "border-red-200 bg-red-50"
+            }`}
+          >
+            {/* Icon */}
+            <div
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                toast.type === "success"
+                  ? "bg-green-500 text-white"
+                  : "bg-red-500 text-white"
+              }`}
+            >
+              {toast.type === "success" ? "✓" : "!"}
+            </div>
+
+            {/* Isi Toast */}
+            <div className="flex-1">
+              <p
+                className={`text-sm font-semibold ${
+                  toast.type === "success"
+                    ? "text-green-800"
+                    : "text-red-800"
+                }`}
+              >
+                {toast.type === "success"
+                  ? "Berhasil"
+                  : "Gagal"}
+              </p>
+
+              <p
+                className={`mt-1 text-sm ${
+                  toast.type === "success"
+                    ? "text-green-700"
+                    : "text-red-700"
+                }`}
+              >
+                {toast.message}
+              </p>
+            </div>
+
+            {/* Tombol Tutup Toast */}
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className={`text-lg leading-none ${
+                toast.type === "success"
+                  ? "text-green-500 hover:text-green-700"
+                  : "text-red-500 hover:text-red-700"
+              }`}
+              aria-label="Tutup notifikasi"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         {/* Header halaman */}
         <div>
@@ -151,6 +240,7 @@ export default function ProdukPage() {
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddProduct}
           submitting={submitting}
+          onToast={showToast}
         />
       </div>
     </DashboardLayout>

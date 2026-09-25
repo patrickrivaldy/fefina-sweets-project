@@ -3,7 +3,13 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
+export default function AddProduct({
+  isOpen,
+  onClose,
+  onSubmit,
+  submitting,
+  onToast,
+}) {
   const [form, setForm] = useState({
     nama_produk: "",
     hpp_estimasi: "",
@@ -154,7 +160,7 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
         const fileName = `${crypto.randomUUID()}.${fileExtension}`;
         const filePath = `products/${fileName}`;
 
-        // PERBAIKAN 1: Mengubah FOTO-PRODUK menjadi foto-produk
+        // Upload foto ke Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from("foto-produk")
           .upload(filePath, imageFile, {
@@ -165,12 +171,13 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
 
         if (uploadError) {
           console.error("Gagal upload foto:", uploadError);
+
           throw new Error(
             uploadError.message || "Foto produk gagal diupload."
           );
         }
 
-        // PERBAIKAN 2: Mengubah FOTO-PRODUK menjadi foto-produk
+        // Ambil public URL foto
         const { data: publicUrlData } = supabase.storage
           .from("foto-produk")
           .getPublicUrl(filePath);
@@ -191,7 +198,16 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
       onClose();
     } catch (error) {
       console.error("Gagal menyimpan produk:", error);
-      setFormError(error.message || "Produk gagal disimpan.");
+
+      const errorMessage =
+        error.message || "Produk gagal disimpan.";
+
+      setFormError(errorMessage);
+
+      // =========================
+      // TOAST GAGAL
+      // =========================
+      onToast?.("error", errorMessage);
     }
   };
 
@@ -227,7 +243,9 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
             {/* Error */}
             {formError && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                <p className="text-sm text-red-600">{formError}</p>
+                <p className="text-sm text-red-600">
+                  {formError}
+                </p>
               </div>
             )}
 
