@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
   const [form, setForm] = useState({
@@ -14,7 +15,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
   const [formError, setFormError] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
-
   const fileInputRef = useRef(null);
 
   if (!isOpen) {
@@ -32,13 +32,12 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     setFormError("");
   };
 
-  // =========================
-  // PILIH FOTO
-  // =========================
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
 
     if (!file) {
+      setImageFile(null);
+      setImagePreview("");
       return;
     }
 
@@ -54,7 +53,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
       return;
     }
 
-    // Hapus preview sebelumnya jika ada
     if (imagePreview) {
       URL.revokeObjectURL(imagePreview);
     }
@@ -64,9 +62,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     setFormError("");
   };
 
-  // =========================
-  // HAPUS FOTO / BATAL PILIH FOTO
-  // =========================
   const handleRemoveImage = () => {
     if (imagePreview) {
       URL.revokeObjectURL(imagePreview);
@@ -75,8 +70,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     setImageFile(null);
     setImagePreview("");
 
-    // Reset input file agar file yang sama
-    // bisa dipilih kembali
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -84,9 +77,6 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     setFormError("");
   };
 
-  // =========================
-  // RESET FORM
-  // =========================
   const resetForm = () => {
     setForm({
       nama_produk: "",
@@ -105,23 +95,16 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     setImagePreview("");
     setFormError("");
 
-    // Reset input file
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  // =========================
-  // TUTUP MODAL
-  // =========================
   const handleClose = () => {
     resetForm();
     onClose();
   };
 
-  // =========================
-  // SUBMIT FORM
-  // =========================
   const handleSubmit = async (event) => {
     event.preventDefault();
     setFormError("");
@@ -129,6 +112,7 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     // =========================
     // VALIDASI FORM
     // =========================
+
     if (!form.nama_produk.trim()) {
       setFormError("Nama produk wajib diisi.");
       return;
@@ -165,16 +149,56 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
     }
 
     try {
+      // =========================
+      // UPLOAD FOTO KE SUPABASE
+      // =========================
+
+      let photoUrl = null;
+
+      if (imageFile) {
+        const fileExtension =
+          imageFile.name.split(".").pop()?.toLowerCase() || "jpg";
+
+        const fileName = `${crypto.randomUUID()}.${fileExtension}`;
+        const filePath = `products/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("FOTO-PRODUK")
+          .upload(filePath, imageFile, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: imageFile.type,
+          });
+
+        if (uploadError) {
+          console.error("Gagal upload foto:", uploadError);
+          throw new Error(
+            uploadError.message || "Foto produk gagal diupload."
+          );
+        }
+
+        // =========================
+        // AMBIL PUBLIC URL FOTO
+        // =========================
+
+        const { data: publicUrlData } = supabase.storage
+          .from("FOTO-PRODUK")
+          .getPublicUrl(filePath);
+
+        photoUrl = publicUrlData.publicUrl;
+      }
+
+      // =========================
+      // INSERT DATA PRODUK
+      // =========================
+
       await onSubmit({
         nama_produk: form.nama_produk.trim(),
         hpp_estimasi: Number(form.hpp_estimasi),
         harga_jual: Number(form.harga_jual),
         stok: Number(form.stok),
         deskripsi: form.deskripsi.trim() || null,
-
-        // Foto belum di-upload.
-        // Akan dikerjakan pada tahap Supabase Storage.
-        foto: null,
+        foto: photoUrl,
       });
 
       // Reset form setelah INSERT berhasil
@@ -194,7 +218,9 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
         {/* Header Modal */}
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Tambah Produk</h2>
+            <h2 className="text-xl font-bold text-slate-900">
+              Tambah Produk
+            </h2>
 
             <p className="mt-1 text-sm text-slate-500">
               Masukkan informasi produk baru.
@@ -203,7 +229,7 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
 
           <button
             type="button"
-            onClick={handleClose}
+            onClick={onClose}
             disabled={submitting}
             className="rounded-lg px-3 py-2 text-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
             aria-label="Tutup"
@@ -353,38 +379,26 @@ export default function AddProduct({ isOpen, onClose, onSubmit, submitting }) {
                   className="block w-full text-sm text-slate-600"
                 />
 
-                {/* Preview Foto */}
                 {imagePreview && (
                   <div className="mt-4">
                     <p className="mb-2 text-sm font-medium text-slate-700">
                       Preview:
                     </p>
 
-                    <div className="relative h-32 w-32">
-                      <img
-                        src={imagePreview}
-                        alt="Preview foto produk"
-                        className="h-32 w-32 rounded-xl object-cover"
-                      />
+                    <img
+                      src={imagePreview}
+                      alt="Preview foto produk"
+                      className="h-32 w-32 rounded-xl object-cover"
+                    />
 
-                      {/* Tombol Hapus Foto */}
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        disabled={submitting}
-                        className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-slate-400 text-sm font-bold text-white shadow-md transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Hapus foto"
-                        title="Hapus foto"
-                      >
-                        ×
-                      </button>
-                    </div>
-
-                    {imageFile && (
-                      <p className="mt-2 max-w-xs truncate text-xs text-slate-500">
-                        {imageFile.name}
-                      </p>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      disabled={submitting}
+                      className="mt-3 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Hapus Foto
+                    </button>
                   </div>
                 )}
               </div>
