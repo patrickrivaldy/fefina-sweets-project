@@ -43,9 +43,7 @@ export default function ProdukPage() {
     try {
       const { error } = await supabase
         .from("products")
-        .update({
-          is_active: false,
-        })
+        .delete()
         .eq("id_produk", product.id_produk);
 
       if (error) {
@@ -68,7 +66,7 @@ export default function ProdukPage() {
 
       if (fetchError) {
         console.error(
-          "Produk berhasil dinonaktifkan, tetapi gagal memuat ulang data:",
+          "Produk berhasil dihapus, tetapi gagal memuat ulang data:",
           fetchError
         );
 
