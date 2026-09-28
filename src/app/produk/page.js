@@ -27,7 +27,7 @@ export default function ProdukPage() {
   };
 
   // =========================
-  // HAPUS / NONAKTIFKAN PRODUK
+  // HAPUS / NONAKTIFKAN PRODUK (SOFT DELETE)
   // =========================
   const handleDeleteProduct = async (product) => {
     const confirmed = window.confirm(
@@ -41,9 +41,12 @@ export default function ProdukPage() {
     setSubmitting(true);
 
     try {
+      // PERBAIKAN: Gunakan UPDATE untuk Soft Delete
       const { error } = await supabase
         .from("products")
-        .delete()
+        .update({
+          is_active: false,
+        })
         .eq("id_produk", product.id_produk);
 
       if (error) {
@@ -58,11 +61,12 @@ export default function ProdukPage() {
         );
       }
 
-      // Ambil kembali data produk
+      // Ambil kembali data produk (Hanya yang aktif)
       const { data, error: fetchError } =
         await supabase
           .from("products")
-          .select("*");
+          .select("*")
+          .eq("is_active", true); // PERBAIKAN: Filter produk aktif
 
       if (fetchError) {
         console.error(
@@ -127,9 +131,11 @@ export default function ProdukPage() {
     let ignore = false;
 
     const loadProducts = async () => {
+      // PERBAIKAN: Hanya ambil produk yang aktif saat pertama kali load
       const { data, error } = await supabase
         .from("products")
-        .select("*");
+        .select("*")
+        .eq("is_active", true); 
 
       if (ignore) {
         return;
@@ -181,11 +187,12 @@ export default function ProdukPage() {
         );
       }
 
-      // Ambil kembali data produk setelah INSERT berhasil
+      // Ambil kembali data produk setelah INSERT berhasil (Hanya yang aktif)
       const { data, error: fetchError } =
         await supabase
           .from("products")
-          .select("*");
+          .select("*")
+          .eq("is_active", true); // PERBAIKAN: Filter produk aktif
 
       if (fetchError) {
         console.error(
@@ -292,10 +299,12 @@ export default function ProdukPage() {
       // =========================
       // AMBIL ULANG DATA PRODUK
       // =========================
+      // PERBAIKAN: Hanya ambil produk yang aktif
       const { data, error: fetchError } =
         await supabase
           .from("products")
-          .select("*");
+          .select("*")
+          .eq("is_active", true); // PERBAIKAN: Filter produk aktif
 
       if (fetchError) {
         console.error(
