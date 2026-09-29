@@ -125,17 +125,25 @@ export default function ProdukPage() {
   };
 
   // =========================
-  // GET / READ DATA PRODUK
+  // GET / READ DATA PRODUK (DENGAN ILIKE & DEBOUNCE)
   // =========================
   useEffect(() => {
     let ignore = false;
 
     const loadProducts = async () => {
-      // PERBAIKAN: Hanya ambil produk yang aktif saat pertama kali load
-      const { data, error } = await supabase
+      setLoading(true);
+
+      let query = supabase
         .from("products")
         .select("*")
-        .eq("is_active", true); 
+        .eq("is_active", true);
+
+      // Jika ada ketikan di kolom pencarian, jalankan ilike
+      if (search.trim()) {
+        query = query.ilike("nama_produk", `%${search}%`);
+      }
+
+      const { data, error } = await query;
 
       if (ignore) {
         return;
@@ -157,12 +165,16 @@ export default function ProdukPage() {
       setLoading(false);
     };
 
-    loadProducts();
+    // Jeda 500ms agar tidak spam database saat mengetik
+    const debounceTimer = setTimeout(() => {
+      loadProducts();
+    }, 500);
 
     return () => {
       ignore = true;
+      clearTimeout(debounceTimer);
     };
-  }, []);
+  }, [search]); // Berjalan ulang setiap kali kata 'search' berubah
 
   // =========================
   // INSERT / TAMBAH PRODUK
@@ -352,15 +364,6 @@ export default function ProdukPage() {
     }
   };
 
-  // =========================
-  // FILTER SEARCH PRODUK
-  // =========================
-  const filteredProducts = products.filter((product) =>
-    product.nama_produk
-      ?.toLowerCase()
-      .includes(search.toLowerCase())
-  );
-
   return (
     <DashboardLayout>
       {/* =========================
@@ -489,7 +492,7 @@ export default function ProdukPage() {
               {error}
             </p>
           </div>
-        ) : filteredProducts.length === 0 ? (
+        ) : products.length === 0 ? (
           search.trim() ? (
             <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-3xl">
@@ -526,7 +529,7 @@ export default function ProdukPage() {
           )
         ) : (
           <ProductTable
-            products={filteredProducts}
+            products={products}
             onEdit={handleEditProduct}
             onDelete={handleDeleteProduct}
           />
