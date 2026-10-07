@@ -13,6 +13,7 @@ import {
   FileBarChart,
   UserRound,
   LogOut,
+  Users,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -45,6 +46,12 @@ export default function Sidebar() {
   const businessMenus = [
     {
       name: "Reseller",
+      href: "/reseller",
+      icon: Users,
+    },
+    
+    {
+      name: "Konsinyasi",
       href: "/konsinyasi",
       icon: RefreshCcw,
     },

@@ -239,7 +239,7 @@ export default function KasirPage() {
                 {filteredProducts.map((product) => (
                   <div
                     key={product.id_produk}
-                    className="group w-full max-w-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md"
+                    className="group w-full max-w-340px overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md"
                   >
                     {/* Foto Produk */}
                     <div className="flex h-44 items-center justify-center bg-orange-50">
@@ -258,7 +258,7 @@ export default function KasirPage() {
 
                     {/* Informasi Produk */}
                     <div className="p-5">
-                      <h3 className="min-h-[40px] text-base font-bold text-slate-800">
+                      <h3 className="min-h-40px text-base font-bold text-slate-800">
                         {product.nama_produk}
                       </h3>
 
