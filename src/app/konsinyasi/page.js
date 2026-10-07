@@ -279,7 +279,7 @@ const handleDeleteReseller = async (reseller) => {
         {/* Header halaman */}
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Konsinyasi
+            Reseller
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">

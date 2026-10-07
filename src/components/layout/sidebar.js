@@ -44,7 +44,7 @@ export default function Sidebar() {
 
   const businessMenus = [
     {
-      name: "Konsinyasi",
+      name: "Reseller",
       href: "/konsinyasi",
       icon: RefreshCcw,
     },

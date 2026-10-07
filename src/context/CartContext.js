@@ -56,17 +56,24 @@ export function CartProvider({ children }) {
   // UBAH JUMLAH PRODUK
   // =========================
   const updateQuantity = (id_produk, qty) => {
-    setCartItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id_produk === id_produk
-          ? {
-              ...item,
-              qty,
-            }
-          : item
-      )
-    );
-  };
+  setCartItems((currentItems) =>
+    currentItems.map((item) => {
+      if (item.id_produk !== id_produk) {
+        return item;
+      }
+
+      const newQuantity = Math.max(
+        1,
+        Math.min(qty, item.stok)
+      );
+
+      return {
+        ...item,
+        qty: newQuantity,
+      };
+    })
+  );
+};
 
   // =========================
   // KOSONGKAN CART

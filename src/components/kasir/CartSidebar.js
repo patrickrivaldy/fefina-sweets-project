@@ -6,6 +6,7 @@ export default function CartSidebar() {
   const {
     cartItems,
     removeFromCart,
+    updateQuantity,
     totalItems,
     totalPrice,
   } = useCart();
@@ -20,7 +21,7 @@ export default function CartSidebar() {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      {/* Header Cart */}
+      {/* Header */}
       <div className="border-b border-slate-200 px-5 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -39,7 +40,7 @@ export default function CartSidebar() {
         </div>
       </div>
 
-      {/* Isi Cart */}
+      {/* Isi Keranjang */}
       <div className="max-h-[520px] overflow-y-auto">
         {cartItems.length === 0 ? (
           <div className="px-5 py-16 text-center">
@@ -62,13 +63,17 @@ export default function CartSidebar() {
               const subtotal =
                 item.harga_jual * item.qty;
 
+              const isMinQuantity = item.qty <= 1;
+              const isMaxQuantity =
+                item.qty >= item.stok;
+
               return (
                 <div
                   key={item.id_produk}
                   className="p-4"
                 >
                   <div className="flex gap-3">
-                    {/* Foto */}
+                    {/* Foto Produk */}
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange-50">
                       {item.foto ? (
                         <img
@@ -83,7 +88,7 @@ export default function CartSidebar() {
                       )}
                     </div>
 
-                    {/* Informasi */}
+                    {/* Informasi Produk */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="text-sm font-semibold text-slate-800">
@@ -104,14 +109,58 @@ export default function CartSidebar() {
                       </div>
 
                       <p className="mt-1 text-xs text-slate-500">
-                        {item.qty} ×{" "}
-                        {formatRupiah(
-                          item.harga_jual
-                        )}
+                        {formatRupiah(item.harga_jual)}
+                        {" / item"}
                       </p>
 
-                      <p className="mt-2 text-sm font-bold text-slate-900">
-                        {formatRupiah(subtotal)}
+                      {/* Kontrol Quantity */}
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center overflow-hidden rounded-lg border border-slate-200">
+                          {/* Kurang */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateQuantity(
+                                item.id_produk,
+                                item.qty - 1
+                              )
+                            }
+                            disabled={isMinQuantity}
+                            className="flex h-8 w-8 items-center justify-center text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                          >
+                            −
+                          </button>
+
+                          {/* Quantity */}
+                          <span className="flex h-8 min-w-9 items-center justify-center border-x border-slate-200 px-2 text-sm font-semibold text-slate-800">
+                            {item.qty}
+                          </span>
+
+                          {/* Tambah */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateQuantity(
+                                item.id_produk,
+                                item.qty + 1
+                              )
+                            }
+                            disabled={isMaxQuantity}
+                            className="flex h-8 w-8 items-center justify-center text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Subtotal */}
+                        <p className="text-sm font-bold text-slate-900">
+                          {formatRupiah(subtotal)}
+                        </p>
+                      </div>
+
+                      {/* Info stok */}
+                      <p className="mt-2 text-xs text-slate-400">
+                        Stok tersedia: {item.stok}
                       </p>
                     </div>
                   </div>
@@ -122,7 +171,7 @@ export default function CartSidebar() {
         )}
       </div>
 
-      {/* Ringkasan */}
+      {/* Total */}
       <div className="border-t border-slate-200 p-5">
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-500">
