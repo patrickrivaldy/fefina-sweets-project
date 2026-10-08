@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -12,6 +13,7 @@ import {
   FileBarChart,
   UserRound,
   LogOut,
+  Users,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -40,8 +42,12 @@ export default function Sidebar() {
       icon: ArrowUpDown,
     },
   ];
-
   const businessMenus = [
+    {
+      name: "Reseller",
+      href: "/reseller",
+      icon: Users,
+    },
     {
       name: "Konsinyasi",
       href: "/konsinyasi",
@@ -97,10 +103,19 @@ export default function Sidebar() {
     });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    router.replace("/login");
-  };
+  const handleLogout = async () => {
+  const { error } = await supabase.auth.signOut({
+    scope: "local",
+  });
+
+  if (error) {
+    console.error("Logout Supabase gagal:", error);
+    return;
+  }
+
+  router.replace("/login");
+  router.refresh();
+};
 
   return (
     <aside className="flex min-h-screen w-64 shrink-0 flex-col bg-[#4B3621] px-4 py-4 text-white">
