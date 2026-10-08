@@ -19,6 +19,7 @@ export default function KasirPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshProducts, setRefreshProducts] = useState(0);
 
   // =========================
   // GET / READ DATA PRODUK
@@ -50,7 +51,7 @@ export default function KasirPage() {
     };
 
     loadProducts();
-  }, []);
+  }, [refreshProducts]);
 
   // =========================
   // FILTER SEARCH
@@ -290,7 +291,11 @@ export default function KasirPage() {
               CART SIDEBAR
           ========================= */}
           <div className="xl:sticky xl:top-6 xl:self-start">
-            <CartSidebar />
+            <CartSidebar
+              onCheckoutSuccess={() =>
+              setRefreshProducts((value) => value + 1)
+            }
+            />
           </div>
         </div>
       </div>

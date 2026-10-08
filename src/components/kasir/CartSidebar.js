@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useCart } from "@/context/CartContext";
+import CheckoutModal from "@/components/kasir/CheckoutModal";
 
-export default function CartSidebar() {
+export default function CartSidebar({ onCheckoutSuccess }) {
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const {
     cartItems,
     removeFromCart,
@@ -186,11 +189,19 @@ export default function CartSidebar() {
         <button
           type="button"
           disabled={cartItems.length === 0}
+          onClick={() => setShowCheckoutModal(true)}
           className="mt-4 w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
         >
           Checkout
         </button>
       </div>
+        {showCheckoutModal && (
+          <CheckoutModal
+          totalPrice={totalPrice}
+          onClose={() => setShowCheckoutModal(false)}
+          onSuccess={onCheckoutSuccess}
+        />
+)}
     </div>
   );
 }
