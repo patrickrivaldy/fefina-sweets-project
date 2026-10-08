@@ -10,12 +10,16 @@ export default function AddKonsinyasiModal({
   resellers,
   products,
 }) {
+  const getToday = () => {
+    return new Date()
+      .toISOString()
+      .split("T")[0];
+  };
+
   const [form, setForm] = useState({
     id_reseller: "",
     id_produk: "",
-    tanggal_titip: new Date()
-      .toISOString()
-      .split("T")[0],
+    tanggal_titip: getToday(),
     jumlah_titip: "",
     jumlah_laku: "0",
     status_pembayaran: "Belum Lunas",
@@ -27,18 +31,59 @@ export default function AddKonsinyasiModal({
     return null;
   }
 
+  // =========================
+  // PRODUK YANG DIPILIH
+  // =========================
   const selectedProduct = products.find(
     (product) =>
       product.id_produk === form.id_produk
   );
 
+  // =========================
+  // HARGA JUAL
+  // =========================
   const hargaJual =
     selectedProduct?.harga_jual || 0;
 
+  // =========================
+  // STOK PRODUK
+  // =========================
+  const stokTersedia =
+    selectedProduct?.stok || 0;
+
+  // =========================
+  // JUMLAH LAKU
+  // =========================
   const jumlahLaku =
     Number(form.jumlah_laku) || 0;
 
-  const subtotal = hargaJual * jumlahLaku;
+  // =========================
+  // JUMLAH TITIP
+  // =========================
+  const jumlahTitip =
+    Number(form.jumlah_titip) || 0;
+
+  // =========================
+  // TOTAL TAGIHAN
+  // =========================
+  const subtotal =
+    hargaJual * jumlahLaku;
+
+  // =========================
+  // CEK STOK
+  // =========================
+  const isStockInsufficient =
+    selectedProduct &&
+    jumlahTitip > stokTersedia;
+
+  // =========================
+  // FORMAT RUPIAH
+  // =========================
+  const formatRupiah = (value) => {
+    return new Intl.NumberFormat("id-ID").format(
+      value || 0
+    );
+  };
 
   // =========================
   // HANDLE CHANGE
@@ -68,25 +113,46 @@ export default function AddKonsinyasiModal({
     const jumlahLaku =
       Number(form.jumlah_laku) || 0;
 
-    // Validasi reseller
+    // =========================
+    // VALIDASI RESELLER
+    // =========================
     if (!form.id_reseller) {
-      setFormError("Reseller wajib dipilih.");
+      setFormError(
+        "Reseller wajib dipilih."
+      );
       return;
     }
 
-    // Validasi produk
+    // =========================
+    // VALIDASI PRODUK
+    // =========================
     if (!form.id_produk) {
-      setFormError("Produk wajib dipilih.");
+      setFormError(
+        "Produk wajib dipilih."
+      );
       return;
     }
 
-    // Validasi tanggal
+    if (!selectedProduct) {
+      setFormError(
+        "Data produk tidak ditemukan."
+      );
+      return;
+    }
+
+    // =========================
+    // VALIDASI TANGGAL
+    // =========================
     if (!form.tanggal_titip) {
-      setFormError("Tanggal titip wajib diisi.");
+      setFormError(
+        "Tanggal titip wajib diisi."
+      );
       return;
     }
 
-    // Validasi jumlah titip
+    // =========================
+    // VALIDASI JUMLAH TITIP
+    // =========================
     if (jumlahTitip <= 0) {
       setFormError(
         "Jumlah titip harus lebih dari 0."
@@ -94,7 +160,19 @@ export default function AddKonsinyasiModal({
       return;
     }
 
-    // Validasi jumlah laku
+    // =========================
+    // VALIDASI STOK
+    // =========================
+    if (jumlahTitip > stokTersedia) {
+      setFormError(
+        `Stok tidak mencukupi. Stok ${selectedProduct.nama_produk} yang tersedia hanya ${stokTersedia}, sedangkan jumlah yang ingin dititipkan adalah ${jumlahTitip}.`
+      );
+      return;
+    }
+
+    // =========================
+    // VALIDASI JUMLAH LAKU
+    // =========================
     if (jumlahLaku < 0) {
       setFormError(
         "Jumlah laku tidak boleh kurang dari 0."
@@ -102,7 +180,9 @@ export default function AddKonsinyasiModal({
       return;
     }
 
-    // Jumlah laku tidak boleh melebihi jumlah titip
+    // =========================
+    // VALIDASI JUMLAH LAKU
+    // =========================
     if (jumlahLaku > jumlahTitip) {
       setFormError(
         "Jumlah laku tidak boleh lebih dari jumlah titip."
@@ -128,12 +208,11 @@ export default function AddKonsinyasiModal({
       setForm({
         id_reseller: "",
         id_produk: "",
-        tanggal_titip: new Date()
-          .toISOString()
-          .split("T")[0],
+        tanggal_titip: getToday(),
         jumlah_titip: "",
         jumlah_laku: "0",
-        status_pembayaran: "Belum Lunas",
+        status_pembayaran:
+          "Belum Lunas",
       });
 
       setFormError("");
@@ -162,12 +241,11 @@ export default function AddKonsinyasiModal({
     setForm({
       id_reseller: "",
       id_produk: "",
-      tanggal_titip: new Date()
-        .toISOString()
-        .split("T")[0],
+      tanggal_titip: getToday(),
       jumlah_titip: "",
       jumlah_laku: "0",
-      status_pembayaran: "Belum Lunas",
+      status_pembayaran:
+        "Belum Lunas",
     });
 
     setFormError("");
@@ -279,15 +357,38 @@ export default function AddKonsinyasiModal({
                     key={product.id_produk}
                     value={product.id_produk}
                   >
-                    {product.nama_produk} -{" "}
-                    {new Intl.NumberFormat(
-                      "id-ID"
-                    ).format(
-                      product.harga_jual || 0
-                    )}
+                    {product.nama_produk} - Rp{" "}
+                    {formatRupiah(
+                      product.harga_jual
+                    )}{" "}
+                    (Stok: {product.stok})
                   </option>
                 ))}
               </select>
+
+              {/* Informasi stok */}
+              {selectedProduct && (
+                <div
+                  className={`mt-2 rounded-lg px-3 py-2 ${
+                    isStockInsufficient
+                      ? "bg-red-50"
+                      : "bg-slate-50"
+                  }`}
+                >
+                  <p
+                    className={`text-xs ${
+                      isStockInsufficient
+                        ? "text-red-600"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    Stok tersedia:{" "}
+                    <span className="font-semibold">
+                      {stokTersedia}
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* =========================
@@ -332,8 +433,20 @@ export default function AddKonsinyasiModal({
                 onChange={handleChange}
                 placeholder="Masukkan jumlah produk"
                 disabled={submitting}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:bg-slate-100"
+                className={`w-full rounded-xl border px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:ring-4 disabled:bg-slate-100 ${
+                  isStockInsufficient
+                    ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                    : "border-slate-200 focus:border-orange-500 focus:ring-orange-100"
+                }`}
               />
+
+              {/* Peringatan stok */}
+              {isStockInsufficient && (
+                <p className="mt-2 text-xs font-medium text-red-600">
+                  Stok tidak mencukupi. Maksimal jumlah
+                  titip adalah {stokTersedia}.
+                </p>
+              )}
             </div>
 
             {/* =========================
@@ -403,9 +516,7 @@ export default function AddKonsinyasiModal({
 
                 <span className="text-lg font-bold text-orange-600">
                   Rp{" "}
-                  {new Intl.NumberFormat(
-                    "id-ID"
-                  ).format(subtotal)}
+                  {formatRupiah(subtotal)}
                 </span>
               </div>
             </div>
@@ -426,8 +537,11 @@ export default function AddKonsinyasiModal({
 
             <button
               type="submit"
-              disabled={submitting}
-              className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                submitting ||
+                isStockInsufficient
+              }
+              className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
             >
               {submitting
                 ? "Menyimpan..."

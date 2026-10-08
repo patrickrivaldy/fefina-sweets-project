@@ -118,7 +118,7 @@ export default function KonsinyasiPage() {
       supabase
         .from("products")
         .select(
-          "id_produk, nama_produk, harga_jual"
+          "id_produk, nama_produk, harga_jual, stok"
         )
         .eq("is_active", true)
         .order("nama_produk", {
@@ -258,8 +258,10 @@ export default function KonsinyasiPage() {
         );
       }
 
-      await loadConsignments();
-
+      await Promise.all([
+        loadConsignments(),
+        loadFormData(),
+      ]);
       setShowAddModal(false);
     } catch (error) {
       console.error(
