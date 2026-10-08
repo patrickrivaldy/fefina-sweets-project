@@ -20,9 +20,7 @@ export default function KonsinyasiPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // =========================
   // GET / READ DATA RESELLER
-  // =========================
   useEffect(() => {
     const loadResellers = async () => {
       const { data, error } = await supabase
@@ -52,9 +50,7 @@ export default function KonsinyasiPage() {
     loadResellers();
   }, []);
 
-  // =========================
   // INSERT / TAMBAH RESELLER
-  // =========================
   const handleAddReseller = async (resellerData) => {
     setSubmitting(true);
 

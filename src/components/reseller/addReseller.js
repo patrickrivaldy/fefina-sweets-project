@@ -161,7 +161,6 @@ export default function AddResellerModal({
               />
             </div>
 
-            {/* Nama Pemilik */}
             <div>
               <label
                 htmlFor="nama_pemilik"
