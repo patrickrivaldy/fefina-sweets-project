@@ -42,7 +42,6 @@ export default function Sidebar() {
       icon: ArrowUpDown,
     },
   ];
-
   const businessMenus = [
     {
       name: "Reseller",
