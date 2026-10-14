@@ -35,11 +35,17 @@ export async function middleware(request) {
     }
   );
 
+  // Cek sesi dari cookie LOKAL (tanpa network call) agar pindah menu cepat.
+  // getUser() memang lebih ketat (validasi ke server Auth tiap request, +150-1100ms
+  // dari Indonesia), tapi untuk POS internal getSession() cukup: cookie-nya JWT
+  // bertanda tangan + token kedaluwarsa otomatis di-refresh oleh @supabase/ssr.
+  // Trade-off: user yang baru dihapus/diblokir di Auth masih bisa browsing sampai
+  // tokennya kedaluwarsa (default 1 jam). Butuh ketat? Ganti ke getUser() lagi.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!session) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -51,9 +57,16 @@ export const config = {
     "/",
     "/kasir/:path*",
     "/produk/:path*",
+    "/produksi/:path*",
+    "/bahan/:path*",
     "/stok/:path*",
+    "/opname/:path*",
+    "/reseller/:path*",
+    "/pengguna/:path*",
     "/konsinyasi/:path*",
+    "/transaksi/:path*",
     "/pengeluaran/:path*",
+    "/catat-pengeluaran/:path*",
     "/laporan/:path*",
     "/pengaturan/:path*",
   ],

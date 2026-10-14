@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fefina Sweets — POS & Konsinyasi UMKM
 
-## Getting Started
+Aplikasi kasir, gudang bahan, produksi (resep + HPP FIFO), konsinyasi, keuangan, dan
+laporan laba untuk UMKM manisan. Dibangun dengan Next.js 16 + Supabase.
 
-First, run the development server:
+## Cara menjalankan
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # mode ngoding (Turbopack, ada compile per halaman)
+npm run build   # sekali, sebelum operasional
+npm run start   # mode production (cepat, tanpa compile) — untuk jualan harian
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Persiapan database (sekali)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+1. Supabase Dashboard → SQL Editor → jalankan `db-draft.md` **BAGIAN 1–6** berurutan
+   (sudah termasuk cicilan, jatuh tempo, supplier, kategori, SKU, index, guard rugi Rp 0 —
+   satu file, sekali jalan).
+3. Authentication → Add user (email + password) untuk login pertama.
+4. Storage `foto-produk` sudah dibuat oleh BAGIAN 6 db-draft.
+5. Menu Pengguna → tautkan Auth ID (UID dari Authentication) + peran ke tiap staf.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Struktur singkat
 
-## Learn More
+```
+src/app/         1 folder = 1 menu, hanya UI + panggil services
+src/components/  ui/ (bersama) + common/ (dipakai banyak halaman)
+src/features/    <nama>/components/ (khusus 1 fitur)
+src/layouts/     kerangka halaman + guard peran
+src/config/      supabase client
+src/constants/  nilai tetap (app.js)
+src/hooks/       usePeriode (preset tanggal)
+src/services/   modal.js (peta HPP)
+src/store/       CartContext, RoleContext
+src/utils/       format.js, image.js
+```
 
-To learn more about Next.js, take a look at the following resources:
+Aturan main + peta tabel→file: lihat `ARCHITECTURE.md`.
+Panduan pakai per menu (untuk staf): lihat `PANDUAN.md`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Rumus laba (seragam di Dashboard, Keuangan, Laporan)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+Laba = Omset − HPP − Beban operasional   (HPP dari detail_transaksi.hpp_satuan)
+```
 
-## Deploy on Vercel
+Semua tanggal memakai WIB (`lib/format.js`: `todayWIB`, `wibDayBounds`, `wibKey`).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Peran (UI-level)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Peran  | Menu |
+|--------|------|
+| Admin  | semua |
+| Owner  | Dashboard, Produk, Keuangan, Riwayat, Laporan, Profil |
+| Kasir  | Kasir, Stok, Riwayat, Profil |
+
+Catatan jujur: RLS di database masih terbuka (`FOR ALL TO authenticated`), jadi peran
+ini pembatas alur kerja di UI, bukan pengaman data. Jangan bagikan akun login.
