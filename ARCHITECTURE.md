@@ -15,12 +15,13 @@ src/
     opname/page.js      → Stock Opname       (penyesuaian_stok)
     konsinyasi/page.js  → Konsinyasi         (nota + detail + mitra + pembayaran + aktivitas)
     reseller/page.js    → Data Reseller      (mitra_toko)
-    pengguna/page.js    → Pengguna           (pengguna, taut auth_id + peran)
+    pengguna/page.js    → Pengguna           (setujui pendaftar + atur peran + taut auth_id)
     pengeluaran/page.js → Keuangan (RINGKASAN baca-saja: metrik + tren + 2 tabel)
     catat-pengeluaran/page.js → Pencatatan pengeluaran (form + hapus)
     transaksi/page.js   → Riwayat + Void     (transaksi_penjualan + detail_transaksi)
     laporan/page.js     → Laporan Laba       (transaksi + pengeluaran + konsinyasi)
-    login/page.js       → Login (Supabase Auth + lupa password)
+    login/page.js       → Login (Supabase Auth + lupa password + tolak yang belum disetujui)
+    register/page.js    → Daftar mandiri (signUp + baris pengguna menunggu persetujuan)
     pengaturan/page.js  → Profil (user asli + peran)
   assets/               → global CSS/Tailwind.
   components/
@@ -87,7 +88,7 @@ src/
 | Catat Produksi       | `riwayat_produksi`       | kunci HPP, stok+batch produk, potong bahan|
 | Bayar di Kasir       | `transaksi_penjualan` + `detail_transaksi` | harga/HPP historis, potong stok FIFO |
 | Buat Nota Titip      | `nota_konsinyasi` + `detail_konsinyasi` | potong stok                               |
-| Selesaikan Nota      | `nota_konsinyasi.status_konsinyasi` | retur bagus → stok, rusak → beban   |
+| Selesaikan Nota      | `nota_konsinyasi.status_konsinyasi` | retur bagus + sisa belum jelas → stok, rusak → beban |
 | Opname / Stok cepat  | `penyesuaian_stok`       | selisih, stok+batch, beban bila minus     |
 | Void nota kasir      | `transaksi_penjualan.status_transaksi` | trigger kembalikan stok + batch    |
 | Cicilan konsinyasi   | `pembayaran_konsinyasi` (db-draft.md BAGIAN 2) | trigger set Lunas bila cicilan ≥ tagihan |

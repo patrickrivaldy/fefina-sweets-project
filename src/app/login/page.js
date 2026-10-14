@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/config/supabase";
 import { Store, Mail, LockKeyhole, Eye, EyeOff, ArrowRight, ShoppingCart, Wallet, ChartColumn } from "lucide-react";
@@ -42,6 +43,38 @@ export default function LoginPage() {
       }
       if (!data?.session) {
         setError("Login berhasil tapi sesi hilang. Coba lagi.");
+        setLoading(false);
+        return;
+      }
+      // Gerbang persetujuan: tolak akun yang belum terdaftar / belum di-acc / dinonaktifkan.
+      // Fallback kolom bila db-draft.md BAGIAN 8 belum dijalankan (instalasi lama).
+      const uid = data.user.id;
+      const q1 = await supabase.from("pengguna").select("id_pengguna, is_deleted, is_disetujui").eq("auth_id", uid).maybeSingle();
+      let prof = q1.data || null;
+      if (q1.error && /column|is_disetujui/i.test(q1.error.message || "")) {
+        const q2 = await supabase.from("pengguna").select("id_pengguna, is_deleted").eq("auth_id", uid).maybeSingle();
+        prof = q2.data || null;
+        if (q2.error || !prof) {
+          await supabase.auth.signOut();
+          setError("Akun belum terdaftar di data staf. Daftar dulu atau hubungi admin.");
+          setLoading(false);
+          return;
+        }
+      } else if (q1.error || !prof) {
+        await supabase.auth.signOut();
+        setError("Akun belum terdaftar di data staf. Daftar dulu atau hubungi admin.");
+        setLoading(false);
+        return;
+      }
+      if (prof.is_deleted) {
+        await supabase.auth.signOut();
+        setError("Akun ini dinonaktifkan. Hubungi admin.");
+        setLoading(false);
+        return;
+      }
+      if (prof.is_disetujui === false) {
+        await supabase.auth.signOut();
+        setError("Pendaftaranmu belum disetujui admin. Tunggu kabar atau hubungi admin.");
         setLoading(false);
         return;
       }
@@ -125,6 +158,10 @@ export default function LoginPage() {
                 <button type="submit" disabled={loading} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60">
                   {loading ? "Masuk…" : <>Masuk <ArrowRight size={16} strokeWidth={2.5} /></>}
                 </button>
+
+                <p className="text-center text-[13px] text-slate-500">
+                  Belum punya akun? <Link href="/register" className="font-bold text-emerald-700 hover:underline">Daftar di sini</Link>
+                </p>
 
                 <div className="text-center">
                   {!lupa ? (

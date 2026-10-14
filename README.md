@@ -19,7 +19,8 @@ npm run start   # mode production (cepat, tanpa compile) — untuk jualan harian
    satu file, sekali jalan).
 3. Authentication → Add user (email + password) untuk login pertama.
 4. Storage `foto-produk` sudah dibuat oleh BAGIAN 6 db-draft.
-5. Menu Pengguna → tautkan Auth ID (UID dari Authentication) + peran ke tiap staf.
+5. Menu Pengguna → tautkan Auth ID (UID dari Authentication) + peran ke tiap staf,
+   atau biarkan staf daftar di halaman Daftar lalu acc + pilih peran di menu Pengguna.
 
 ## Struktur singkat
 

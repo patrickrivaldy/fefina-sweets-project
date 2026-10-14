@@ -5,11 +5,10 @@ import Link from "next/link";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import AddPengeluaranModal from "@/features/pengeluaran/components/AddPengeluaranModal";
 import { supabase } from "@/config/supabase";
-import { formatRupiah, formatTanggal, todayWIB, wibDateTime } from "@/utils/format";
-import { KATEGORI_PENGELUARAN } from "@/constants/app";
-import RupiahInput from "@/components/ui/RupiahInput";
-import { Wallet, Trash2, Search, ArrowLeft, Check } from "lucide-react";
+import { formatRupiah, formatTanggal, wibDateTime } from "@/utils/format";
+import { Wallet, Trash2, Search, ArrowLeft, Check, Plus } from "lucide-react";
 
 export default function CatatPengeluaranPage() {
   const [rows, setRows] = useState([]);
@@ -17,10 +16,9 @@ export default function CatatPengeluaranPage() {
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const [formErr, setFormErr] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [adaKategori, setAdaKategori] = useState(true);
-  const [form, setForm] = useState({ keterangan: "", nominal: "", tanggal: todayWIB(), kategori: "Operasional" });
+  const [showAdd, setShowAdd] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -57,22 +55,19 @@ export default function CatatPengeluaranPage() {
 
   const totalTampil = filtered.reduce((s, x) => s + (+x.nominal || 0), 0);
 
-  const simpan = async (e) => {
-    e.preventDefault();
-    setFormErr("");
+  const simpan = async ({ keterangan, nominal, tanggal, kategori }) => {
     setOkMsg("");
-    if (!form.keterangan.trim()) return setFormErr("Tulis keperluannya dulu.");
-    const n = Number(form.nominal);
-    if (!n || n <= 0) return setFormErr("Nominal harus lebih dari 0.");
-    if (busy) return;
+    if (!keterangan?.trim()) throw new Error("Tulis keperluannya dulu.");
+    const n = Number(nominal);
+    if (!n || n <= 0) throw new Error("Nominal harus lebih dari 0.");
     setBusy(true);
     try {
       const payload = {
-        keterangan: form.keterangan.trim(),
+        keterangan: keterangan.trim(),
         nominal: n,
-        tanggal: form.tanggal ? wibDateTime(form.tanggal) : new Date().toISOString(),
+        tanggal: tanggal ? wibDateTime(tanggal) : new Date().toISOString(),
       };
-      if (adaKategori) payload.kategori = form.kategori || "Lainnya";
+      if (adaKategori) payload.kategori = kategori || "Lainnya";
       let ins = await supabase.from("pengeluaran_toko").insert([payload]);
       if (ins.error && adaKategori && /column|kategori/i.test(ins.error.message || "")) {
         delete payload.kategori;
@@ -80,11 +75,9 @@ export default function CatatPengeluaranPage() {
         ins = await supabase.from("pengeluaran_toko").insert([payload]);
       }
       if (ins.error) throw new Error(ins.error.message);
-      setForm({ keterangan: "", nominal: "", tanggal: todayWIB(), kategori: "Operasional" });
       setOkMsg(`Tersimpan: keluar ${formatRupiah(n)}.`);
+      setShowAdd(false);
       await load();
-    } catch (err) {
-      setFormErr(err.message || "Gagal menyimpan.");
     } finally {
       setBusy(false);
     }
@@ -104,64 +97,26 @@ export default function CatatPengeluaranPage() {
           title="Pencatatan Pengeluaran"
           subtitle="Catat tiap uang keluar selain kulakan bahan. Ringkasannya ada di Keuangan."
           action={
-            <Link href="/pengeluaran" className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
-              <ArrowLeft size={16} /> Ringkasan Keuangan
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/pengeluaran" className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+                <ArrowLeft size={16} /> Ringkasan
+              </Link>
+              <button type="button" onClick={() => { setOkMsg(""); setShowAdd(true); }} className="flex h-12 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white shadow-sm hover:bg-emerald-800">
+                <Plus size={16} /> Catat Pengeluaran
+              </button>
+            </div>
           }
         />
 
-        <div className="grid items-start gap-4 xl:grid-cols-5">
-          {/* Form */}
-          <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 xl:col-span-2">
-            <h2 className="text-[15px] font-bold">Catat Baru</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Contoh: token listrik, paper bag, gaji.</p>
-            <form onSubmit={simpan} className="mt-4 space-y-4">
-              {formErr && <p className="rounded-lg bg-red-50 p-3 text-[13px] font-semibold text-red-600">{formErr}</p>}
-              {okMsg && (
-                <p className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-[13px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
-                  <Check size={15} strokeWidth={3} /> {okMsg}
-                </p>
-              )}
-              <div>
-                <label className="mb-1.5 block text-[13px] font-bold">Keterangan *</label>
-                <input value={form.keterangan} onChange={(e) => setForm({ ...form, keterangan: e.target.value })} disabled={busy} autoFocus placeholder="Tulis keperluan…" className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-sm outline-none focus:border-emerald-700 focus:ring-[3px] focus:ring-emerald-600/15" />
-              </div>
-              {adaKategori && (
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-bold">Kategori</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {KATEGORI_PENGELUARAN.map((k) => (
-                      <button key={k} type="button" onClick={() => setForm({ ...form, kategori: k })} disabled={busy}
-                        className={`rounded-full px-3 py-1.5 text-xs font-bold ${form.kategori === k ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                        {k}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-bold">Nominal (Rp) *</label>
-                  <RupiahInput value={form.nominal} onChange={(v) => setForm({ ...form, nominal: v })} disabled={busy} placeholder="50.000" className="tnum h-11 w-full rounded-lg border border-slate-300 px-3.5 text-right text-sm font-bold outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-[3px] focus:ring-emerald-600/15" />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-bold">Tanggal</label>
-                  <input type="date" value={form.tanggal} onChange={(e) => setForm({ ...form, tanggal: e.target.value })} disabled={busy} className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-sm outline-none focus:border-emerald-700 focus:ring-[3px] focus:ring-emerald-600/15" />
-                </div>
-              </div>
-              {Number(form.nominal) > 0 && (
-                <p className="rounded-lg bg-red-50/60 p-3 text-sm ring-1 ring-red-100">
-                  Keluar: <b className="tnum text-red-600">- {formatRupiah(form.nominal)}</b>
-                </p>
-              )}
-              <button type="submit" disabled={busy} className="h-12 w-full rounded-lg bg-emerald-700 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-60">
-                {busy ? "Menyimpan…" : "Simpan Pengeluaran"}
-              </button>
-            </form>
-          </section>
+        {okMsg && (
+          <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3.5 text-[13px] font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-100">
+            <Check size={15} strokeWidth={3} /> {okMsg}
+          </p>
+        )}
 
+        <div className="grid items-start gap-4">
           {/* Daftar */}
-          <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/70 xl:col-span-3">
+          <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/70">
             <div className="px-5 pb-1 pt-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-[15px] font-bold"><Wallet size={16} className="text-red-500" /> Terakhir Dicatat</h2>
@@ -217,9 +172,11 @@ export default function CatatPengeluaranPage() {
                 </table>
               )}
             </div>
-          </section>
+            </section>
         </div>
       </div>
+
+      <AddPengeluaranModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSubmit={simpan} submitting={busy} adaKategori={adaKategori} />
     </DashboardLayout>
   );
 }

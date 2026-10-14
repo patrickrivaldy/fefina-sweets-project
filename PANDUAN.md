@@ -227,6 +227,11 @@ Menautkan: Supabase Authentication → salin UID → menu Pengguna → tempel ke
 Tanpa Auth ID, akses penuh (mode kompatibilitas). Ini pembatas alur kerja di layar,
 bukan pengaman database — jangan bagikan akun login.
 
+Pendaftaran mandiri (butuh db-draft.md BAGIAN 8 sekali): staf buka halaman Daftar
+(link di halaman Masuk) → isi nama/username/email/password → namanya masuk daftar
+"Menunggu persetujuan" di menu Pengguna → Admin pilih peran + Setujui. Yang belum
+disetujui tidak bisa masuk walau email-passwordnya benar.
+
 ## Koreksi Salah Input (Void)
 
 - **Transaksi kasir salah:** buka Riwayat → klik nota → **Void / Batalkan**. Stok kembali

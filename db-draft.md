@@ -10,6 +10,10 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjYXF0aGZ
 -- - Update / rerun (data TIDAK hilang): jalankan BAGIAN 3, 4, 5, 6 saja.
 --   JANGAN jalankan BAGIAN 1 (DROP = reset total) dan BAGIAN 2 (CREATE TABLE
 --   biasa = error bila tabel sudah ada) kecuali mau instal ulang dari nol.
+-- - BAGIAN 7: opsional, SEKALI JALAN setelah BAGIAN 5 (rapikan keterangan
+--   pengeluaran lama ID → nama produk). Aman diulang (baris yang sudah rapi
+--   tidak tersentuh lagi).
+-- - BAGIAN 8: registrasi mandiri pengguna (aman di-rerun, SEKALI saja cukup).
 -- ==============================================================================
 -- BAGIAN 1: PENGHAPUSAN SKEMA LAMA (RESET / FRESH INSTALL)
 -- ==============================================================================
@@ -37,14 +41,17 @@ DROP TABLE IF EXISTS public.pengguna CASCADE;
 -- BAGIAN 2: PEMBUATAN STRUKTUR TABEL UTAMA (ENTERPRISE ERP STANDARDS)
 -- ==============================================================================
 
--- 1. Tabel Pengguna 
+-- 1. Tabel Pengguna (registrasi mandiri: email + is_disetujui;
+-- pendaftar baru selalu menunggu persetujuan, admin yang meng-acc + pilih peran)
 CREATE TABLE public.pengguna (
   id_pengguna uuid NOT NULL DEFAULT gen_random_uuid(),
   auth_id uuid UNIQUE REFERENCES auth.users(id) ON DELETE SET NULL,
   nama_lengkap character varying NOT NULL,
   username character varying NOT NULL UNIQUE,
-  password text NOT NULL, 
+  email character varying UNIQUE,
+  password text,
   role_akses character varying DEFAULT 'Kasir' CHECK (role_akses IN ('Admin', 'Kasir', 'Owner')),
+  is_disetujui boolean DEFAULT true,
   is_deleted boolean DEFAULT false, 
   CONSTRAINT pengguna_pkey PRIMARY KEY (id_pengguna)
 );
@@ -529,30 +536,45 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_potong_stok_titip AFTER INSERT ON public.detail_konsinyasi FOR EACH ROW EXECUTE FUNCTION potong_stok_titip();
 
 
--- G. Retur Konsinyasi
+-- G. Retur Konsinyasi (saat nota diselesaikan)
+-- Retur bagus kembali ke stok + batch, retur rusak jadi beban, DAN sisa titipan
+-- yang belum dijelaskan (titip - laku - retur bagus - retur rusak) ikut kembali
+-- agar tidak nyangkut (mis. mitra mengembalikan semua tanpa catat rinci).
 CREATE OR REPLACE FUNCTION tarik_retur_konsinyasi() RETURNS TRIGGER AS $$
 DECLARE
   detail_rec RECORD;
   v_hpp INT;
   v_rugi INT;
+  v_sisa INT;
+  v_kembali INT;
+  v_nama TEXT;
 BEGIN
   IF NEW.status_konsinyasi = 'Selesai' AND OLD.status_konsinyasi != 'Selesai' THEN
-    FOR detail_rec IN SELECT id_produk, jumlah_retur_bagus, jumlah_retur_rusak FROM public.detail_konsinyasi WHERE id_konsinyasi = NEW.id_konsinyasi
+    FOR detail_rec IN
+      SELECT id_produk, jumlah_titip, jumlah_laku, jumlah_retur_bagus, jumlah_retur_rusak
+      FROM public.detail_konsinyasi WHERE id_konsinyasi = NEW.id_konsinyasi
     LOOP
       SELECT hpp_produksi INTO v_hpp FROM public.batch_produk WHERE id_produk = detail_rec.id_produk AND stok_sisa > 0 ORDER BY tanggal_kadaluarsa ASC NULLS FIRST, tanggal_produksi ASC LIMIT 1;
       IF v_hpp IS NULL THEN SELECT modal_hpp_aktual INTO v_hpp FROM public.view_modal_produk WHERE id_produk = detail_rec.id_produk; END IF;
+      SELECT nama_produk INTO v_nama FROM public.produk WHERE id_produk = detail_rec.id_produk;
       
-      IF detail_rec.jumlah_retur_bagus > 0 THEN
-        UPDATE public.produk SET stok = stok + detail_rec.jumlah_retur_bagus WHERE id_produk = detail_rec.id_produk;
+      -- sisa titipan yang belum dijelaskan ikut kembali ke stok
+      v_sisa := COALESCE(detail_rec.jumlah_titip, 0) - COALESCE(detail_rec.jumlah_laku, 0)
+              - COALESCE(detail_rec.jumlah_retur_bagus, 0) - COALESCE(detail_rec.jumlah_retur_rusak, 0);
+      IF v_sisa < 0 THEN v_sisa := 0; END IF;
+      v_kembali := COALESCE(detail_rec.jumlah_retur_bagus, 0) + v_sisa;
+
+      IF v_kembali > 0 THEN
+        UPDATE public.produk SET stok = stok + v_kembali WHERE id_produk = detail_rec.id_produk;
         INSERT INTO public.batch_produk (id_produk, stok_sisa, hpp_produksi, tanggal_kadaluarsa) 
-        VALUES (detail_rec.id_produk, detail_rec.jumlah_retur_bagus, COALESCE(v_hpp,0), NULL);
+        VALUES (detail_rec.id_produk, v_kembali, COALESCE(v_hpp,0), NULL);
       END IF;
 
       IF detail_rec.jumlah_retur_rusak > 0 THEN
         v_rugi := detail_rec.jumlah_retur_rusak * COALESCE(v_hpp, 0);
         IF v_rugi > 0 THEN
           INSERT INTO public.pengeluaran_toko (keterangan, nominal, id_pengguna, kategori)
-          VALUES ('Rugi Konsinyasi Rusak (' || detail_rec.jumlah_retur_rusak || ' pcs) - ID: ' || detail_rec.id_produk, v_rugi, NEW.id_pengguna, 'Kerugian / Rusak');
+          VALUES ('Rugi Konsinyasi Rusak (' || detail_rec.jumlah_retur_rusak || ' pcs) - ' || COALESCE(v_nama, detail_rec.id_produk::text), v_rugi, NEW.id_pengguna, 'Kerugian / Rusak');
         END IF;
       END IF;
     END LOOP;
@@ -588,6 +610,7 @@ DECLARE
   v_hpp INT;
   v_sisa_potong INT;
   v_kat TEXT;
+  v_nama TEXT;
   batch_rec RECORD;
 BEGIN
   SELECT stok INTO NEW.stok_sistem FROM public.produk WHERE id_produk = NEW.id_produk;
@@ -599,6 +622,7 @@ BEGIN
     SELECT hpp_produksi INTO v_hpp FROM public.batch_produk WHERE id_produk = NEW.id_produk AND stok_sisa > 0 ORDER BY tanggal_kadaluarsa ASC NULLS FIRST, tanggal_produksi ASC LIMIT 1;
     IF v_hpp IS NULL THEN SELECT modal_hpp_aktual INTO v_hpp FROM public.view_modal_produk WHERE id_produk = NEW.id_produk; END IF;
     
+    SELECT nama_produk INTO v_nama FROM public.produk WHERE id_produk = NEW.id_produk;
     v_rugi := v_sisa_potong * COALESCE(v_hpp, 0);
     IF v_rugi > 0 THEN
       -- Kategori mengikuti awalan keterangan dari aplikasi (Rusak:/Kadaluarsa:),
@@ -609,7 +633,7 @@ BEGIN
         v_kat := 'Stock Opname / Hilang';
       END IF;
       INSERT INTO public.pengeluaran_toko (keterangan, nominal, id_pengguna, kategori)
-      VALUES ('Opname/Hilang (' || v_sisa_potong || ' pcs) - ' || NEW.keterangan || ' - ID: ' || NEW.id_produk, v_rugi, NEW.id_pengguna, v_kat);
+      VALUES ('Opname/Hilang (' || v_sisa_potong || ' pcs) - ' || NEW.keterangan || ' - ' || COALESCE(v_nama, NEW.id_produk::text), v_rugi, NEW.id_pengguna, v_kat);
     END IF;
 
     FOR batch_rec IN SELECT id_batch_produk, stok_sisa FROM public.batch_produk WHERE id_produk = NEW.id_produk AND stok_sisa > 0 ORDER BY tanggal_kadaluarsa ASC NULLS FIRST, tanggal_produksi ASC FOR UPDATE
@@ -710,3 +734,37 @@ ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'foto-pro
 
 CREATE POLICY "Login bisa hapus foto"
 ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'foto-produk');
+
+-- ==============================================================================
+-- BAGIAN 7 (opsional, SEKALI JALAN setelah BAGIAN 5 — aman diulang):
+-- Ganti ID produk di keterangan pengeluaran LAMA menjadi nama produk agar
+-- mudah dibaca. Hanya menyentuh baris yang masih berformat "... - ID: <uuid>".
+-- ==============================================================================
+UPDATE public.pengeluaran_toko p
+SET keterangan = regexp_replace(
+  p.keterangan,
+  ' - ID: [0-9a-fA-F-]{36}$',
+  ' - ' || pr.nama_produk
+)
+FROM public.produk pr
+WHERE p.keterangan ~ ' - ID: [0-9a-fA-F-]{36}$'
+  AND pr.id_produk = (regexp_match(p.keterangan, ' - ID: ([0-9a-fA-F-]{36})$'))[1]::uuid;
+
+-- ==============================================================================
+-- BAGIAN 8: REGISTRASI MANDIRI PENGGUNA (aman di-rerun)
+-- Alur: staf daftar di halaman /register → baris "menunggu persetujuan" →
+-- admin acc + pilih peran di menu Pengguna. Login menolak yang belum disetujui.
+-- - Baris LAMA otomatis dianggap disetujui (DEFAULT true) agar akun yang sudah
+--   jalan tidak terkunci.
+-- - Password boleh kosong (login resmi via Supabase Auth; kolom password hanya
+--   warisan kompatibilitas).
+-- - Anon (belum login) HANYA boleh INSERT pendaftar menunggu persetujuan —
+--   peran & status dikunci di policy, jadi pendaftar tidak bisa mengangkat
+--   dirinya jadi Admin.
+-- ==============================================================================
+ALTER TABLE public.pengguna ADD COLUMN IF NOT EXISTS email character varying UNIQUE;
+ALTER TABLE public.pengguna ADD COLUMN IF NOT EXISTS is_disetujui boolean DEFAULT true;
+ALTER TABLE public.pengguna ALTER COLUMN password DROP NOT NULL;
+DROP POLICY IF EXISTS "Registrasi mandiri" ON public.pengguna;
+CREATE POLICY "Registrasi mandiri" ON public.pengguna FOR INSERT TO anon
+  WITH CHECK (role_akses = 'Kasir' AND is_disetujui = false AND is_deleted = false);

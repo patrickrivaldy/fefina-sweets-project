@@ -7,7 +7,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import Select from "@/components/ui/Select";
 import Badge from "@/components/ui/Badge";
 import { supabase } from "@/config/supabase";
-import { formatRupiah, formatTanggal, todayWIB, wibDateTime, formatKonversi, formatStok } from "@/utils/format";
+import { formatRupiah, formatTanggal, todayWIB, wibDateTime, formatKonversi, formatSatuanOtomatis, konversiOtomatis } from "@/utils/format";
 import { SATUAN_BAHAN, LIMITS } from "@/constants/app";
 import RupiahInput from "@/components/ui/RupiahInput";
 import { Wheat, Plus, Pencil, Trash2, ShoppingCart, History, X } from "lucide-react";
@@ -150,7 +150,7 @@ export default function BahanPage() {
         <PageHeader
           eyebrow="Gudang & Kulakan"
           title="Bahan Baku"
-          subtitle="Stok dan harga rata-rata (WAC) dihitung otomatis tiap ada pembelian."
+          subtitle="Daftarkan bahan sekali di awal, catat tiap kulakan — stok dan harga rata-rata kehitung otomatis."
           action={
             <div className="flex gap-2">
               <button type="button" onClick={() => { setErr(""); setShowBeli(true); }} className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
@@ -163,6 +163,23 @@ export default function BahanPage() {
           }
         />
 
+        {/* Penuntun 3 langkah — statis, tanpa logika */}
+        <ol className="grid gap-2 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-200/60 sm:grid-cols-3">
+          {[
+            ["1", "Daftarkan bahan", "cukup sekali di awal"],
+            ["2", "Catat pembelian", "tiap habis kulakan"],
+            ["3", "Stok & harga otomatis", "tidak perlu hitung manual"],
+          ].map(([n, t, s]) => (
+            <li key={n} className="flex items-center gap-2.5 rounded-lg bg-[#eff4ff]/60 px-3 py-2 ring-1 ring-slate-100">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">{n}</span>
+              <span>
+                <span className="block text-[13px] font-bold leading-tight">{t}</span>
+                <span className="block text-[11px] text-slate-500">{s}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 sm:p-5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Macam Bahan</p>
@@ -171,11 +188,12 @@ export default function BahanPage() {
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 sm:p-5">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Nilai Persediaan</p>
             <p className="tnum mt-1 break-words text-2xl font-bold text-emerald-700">{loading ? "…" : formatRupiah(Math.round(nilaiStok))}</p>
-            <p className="mt-1 text-[11px] leading-snug text-slate-400">Stok saat ini × WAC. Turun saat dipakai produksi = pindah jadi modal produk, bukan hilang.</p>
+            <p className="mt-1 text-[11px] leading-snug text-slate-400">Untuk apa: total nilai bahan di gudang. Stok saat ini × harga rata-rata. Turun saat dipakai produksi = pindah jadi biaya produk, bukan hilang.</p>
           </div>
           <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70 sm:p-5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Batch Aktif (FIFO)</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Batch Kulakan Aktif</p>
             <p className="tnum mt-1 break-words text-2xl font-bold">{loading ? "…" : batch.length}</p>
+            <p className="mt-1 text-[11px] leading-snug text-slate-400">Tumpukan sisa tiap pembelian — yang kadaluarsanya dekat dipakai duluan.</p>
           </div>
         </div>
 
@@ -200,6 +218,7 @@ export default function BahanPage() {
             <div className="grid items-start gap-3 lg:grid-cols-2">
               {filtered.map((x) => {
                 const bs = batchOf(x.id_bahan);
+                const kStok = konversiOtomatis(x.stok_bahan, x.satuan);
                 const totalBatch = bs.reduce((s, b) => s + Number(b.stok_sisa), 0);
                 const drift = Number(x.stok_bahan) - totalBatch;
                 const open = expandId === x.id_bahan;
@@ -209,7 +228,7 @@ export default function BahanPage() {
                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><Wheat size={20} /></span>
                       <div className="min-w-0 flex-1 leading-tight">
                         <p className="truncate text-sm font-bold">{x.nama_bahan}</p>
-                        <p className="tnum text-xs text-slate-500">{formatStok(x.stok_bahan)} {x.satuan} • WAC {formatRupiah(x.harga_rata_rata)}/{x.satuan}</p>
+                        <p className="tnum text-xs text-slate-500">{formatSatuanOtomatis(x.stok_bahan, x.satuan)} • Rata-rata {formatRupiah(Number(x.harga_rata_rata) * kStok.faktor)}/{kStok.satuan || x.satuan}</p>
                       </div>
                       <div className="flex gap-1">
                         <button type="button" onClick={() => openEdit(x)} aria-label="Ubah" className="rounded-lg p-2 text-slate-400 hover:bg-emerald-50 hover:text-emerald-700"><Pencil size={15} /></button>
@@ -217,20 +236,20 @@ export default function BahanPage() {
                       </div>
                     </div>
                     <button type="button" onClick={() => setExpandId(open ? null : x.id_bahan)} className="mt-2.5 w-full rounded-lg bg-[#eff4ff] px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-200">
-                      {open ? "Tutup batch" : `Lihat ${bs.length} batch FIFO`} {bs.length > 0 && <span className="font-medium text-slate-400">• sisa {formatStok(bs.reduce((s, b) => s + Number(b.stok_sisa), 0))} {x.satuan}</span>}
+                      {open ? "Tutup rincian kulakan" : `Lihat ${bs.length} tumpukan kulakan`} {bs.length > 0 && <span className="font-medium text-slate-400">• sisa {formatSatuanOtomatis(bs.reduce((s, b) => s + Number(b.stok_sisa), 0), x.satuan)}</span>}
                     </button>
                     {open && (
                       <ul className="mt-2 space-y-1.5">
                         <li className="tnum flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs ring-1 ring-slate-100">
-                          <span className="font-bold text-slate-600">Total batch: {formatStok(totalBatch)} {x.satuan}</span>
+                          <span className="font-bold text-slate-600">Total tumpukan: {formatSatuanOtomatis(totalBatch, x.satuan)}</span>
                           <span className={Math.abs(drift) < 0.01 ? "font-bold text-emerald-700" : "font-bold text-red-600"}>
-                            {Math.abs(drift) < 0.01 ? "✓ cocok stok master" : `⚠ selisih ${formatStok(drift)} vs master`}
+                            {Math.abs(drift) < 0.01 ? "✓ cocok dengan stok" : `⚠ tidak cocok (selisih ${formatSatuanOtomatis(drift, x.satuan)}). Minta tolong admin.`}
                           </span>
                         </li>
-                        {bs.length === 0 && <li className="text-xs text-slate-400">Tidak ada batch aktif.</li>}
+                        {bs.length === 0 && <li className="text-xs text-slate-400">Tidak ada sisa kulakan yang aktif.</li>}
                         {bs.map((b) => (
                           <li key={b.id_batch_bahan} className="tnum flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs ring-1 ring-slate-100">
-                            <span className="font-bold">{formatStok(b.stok_sisa)} {x.satuan}</span>
+                            <span className="font-bold">{formatSatuanOtomatis(b.stok_sisa, x.satuan)}</span>
                             <span className="text-slate-500">masuk {formatTanggal(b.tanggal_masuk)} {b.tanggal_kadaluarsa ? `• exp ${formatTanggal(b.tanggal_kadaluarsa)}` : "• tanpa exp"}</span>
                           </li>
                         ))}
@@ -245,8 +264,8 @@ export default function BahanPage() {
           <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/60">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3.5">
               <div>
-                <h2 className="text-[15px] font-bold">Total Modal Kulakan</h2>
-                <p className="text-xs text-slate-500">{riwayat.length} pembelian • harga & batch otomatis per pembelian</p>
+                <h2 className="text-[15px] font-bold">Total Belanja Kulakan</h2>
+                <p className="text-xs text-slate-500">Untuk apa: jejak semua kulakan. Harga rata-rata & tumpukan kulakan terbentuk otomatis dari sini.</p>
               </div>
               <p className="tnum text-xl font-bold text-emerald-700">{formatRupiah(riwayat.reduce((s, r) => s + (+r.total_biaya || 0), 0))}</p>
             </div>
@@ -264,7 +283,7 @@ export default function BahanPage() {
                       <td className="whitespace-nowrap px-5 py-2.5 text-xs text-slate-500">{formatTanggal(r.tanggal_beli, true)}</td>
                       <td className="px-4 py-2.5 text-[13px] font-bold">{r.bahan_baku?.nama_bahan}</td>
                       {adaSupplier && <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{r.supplier?.nama_supplier || "-"}</td>}
-                      <td className="tnum whitespace-nowrap px-4 py-2.5 text-right text-[13px]">{formatStok(r.jumlah_beli)} {r.bahan_baku?.satuan}</td>
+                      <td className="tnum whitespace-nowrap px-4 py-2.5 text-right text-[13px]">{formatSatuanOtomatis(r.jumlah_beli, r.bahan_baku?.satuan)}</td>
                       <td className="tnum whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-bold text-emerald-700">{formatRupiah(r.total_biaya)}</td>
                       <td className="whitespace-nowrap px-5 py-2.5 text-right text-xs text-slate-500">{r.tanggal_kadaluarsa ? formatTanggal(r.tanggal_kadaluarsa) : "-"}</td>
                     </tr>
@@ -288,7 +307,7 @@ export default function BahanPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4">
           <form onSubmit={simpanBahan} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
             <h2 className="text-base font-bold">{editing ? "Ubah Bahan" : "Tambah Bahan"}</h2>
-            <p className="text-xs text-slate-500">Stok awal 0 — stok bertambah lewat menu Catat Pembelian.</p>
+            <p className="text-xs text-slate-500">Daftarkan bahan sekali di awal. Stok awal 0 — bertambah lewat Catat Pembelian.</p>
             {err && <p className="mt-3 rounded-lg bg-red-50 p-3 text-[13px] font-semibold text-red-600">{err}</p>}
             <div className="mt-3 space-y-3">
               <div><label className="mb-1.5 block text-[13px] font-bold">Nama Bahan *</label>
@@ -319,7 +338,7 @@ export default function BahanPage() {
           <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div><h2 className="text-base font-bold">Catat Pembelian Bahan</h2>
-                <p className="text-xs text-slate-500">Trigger DB otomatis hitung WAC + buat batch FIFO.</p></div>
+                <p className="text-xs text-slate-500">Untuk apa: stok bertambah, harga rata-rata terkoreksi, & tumpukan kulakan baru tercatat — otomatis.</p></div>
               <button type="button" onClick={() => !busy && setShowBeli(false)} aria-label="Tutup" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={18} /></button>
             </div>
             <form onSubmit={simpanBeli} className="flex min-h-0 flex-1 flex-col">
@@ -327,7 +346,7 @@ export default function BahanPage() {
                 {err && <p className="rounded-lg bg-red-50 p-3 text-[13px] font-semibold text-red-600">{err}</p>}
                 <Select label="Bahan *" value={beli.id_bahan} onChange={(e) => setBeli({ ...beli, id_bahan: e.target.value })} disabled={busy}
                   placeholder="Pilih bahan…">
-                  {bahan.map((x) => <option key={x.id_bahan} value={x.id_bahan}>{x.nama_bahan} (stok {formatStok(x.stok_bahan)} {x.satuan})</option>)}
+                  {bahan.map((x) => <option key={x.id_bahan} value={x.id_bahan}>{x.nama_bahan} (stok {formatSatuanOtomatis(x.stok_bahan, x.satuan)})</option>)}
                 </Select>
                 {adaSupplier && (
                   <div>
@@ -368,7 +387,7 @@ export default function BahanPage() {
                     <input type="date" value={beli.tanggal_kadaluarsa} onChange={(e) => setBeli({ ...beli, tanggal_kadaluarsa: e.target.value })} disabled={busy} className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-sm outline-none focus:border-emerald-700" /></div>
                 </div>
                 {Number(beli.jumlah_beli) > 0 && Number(beli.total_biaya) > 0 && (
-                  <p className="rounded-lg bg-emerald-50/70 p-3 text-sm ring-1 ring-emerald-100">Harga satuan: <b className="tnum text-emerald-700">{formatRupiah(Number(beli.total_biaya) / Number(beli.jumlah_beli))}{beliSatuan ? ` / ${beliSatuan}` : ""}</b></p>
+                  <p className="rounded-lg bg-emerald-50/70 p-3 text-sm ring-1 ring-emerald-100">Harga per satuan: <b className="tnum text-emerald-700">{formatRupiah(Number(beli.total_biaya) / Number(beli.jumlah_beli))}{beliSatuan ? ` / ${beliSatuan}` : ""}</b></p>
                 )}
               </div>
               <div className="flex gap-2 border-t border-slate-100 p-4">

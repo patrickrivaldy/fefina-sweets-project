@@ -118,3 +118,27 @@ export function formatKonversi(nilai, satuan) {
   if (s === "liter" || s === "l") return `= ${f(n * 1000)} ml`;
   return "";
 }
+
+// Konversi OTOMATIS untuk TAMPILAN saja (input & database tetap satuan dasar):
+// gram ≥ 1000 → kg, ml ≥ 1000 → liter, sebaliknya kg/liter di bawah 1 → gram/ml.
+// Satuan lain (pcs, pack, sachet, butir, ...) tidak diubah.
+// faktor = pengali harga satuan dasar agar cocok dengan satuan tampil
+// (mis. Rp50/gram → tampil Rp50.000/kg bila stoknya tampil dalam kg).
+export function konversiOtomatis(nilai, satuan) {
+  const n = Number(nilai);
+  const s = String(satuan || "").trim().toLowerCase();
+  const a = Math.abs(n);
+  if ((s === "gram" || s === "g") && a >= 1000) return { nilai: n / 1000, satuan: "kg", faktor: 1000 };
+  if ((s === "kilogram" || s === "kg") && a > 0 && a < 1) return { nilai: n * 1000, satuan: "gram", faktor: 1 / 1000 };
+  if (s === "ml" && a >= 1000) return { nilai: n / 1000, satuan: "liter", faktor: 1000 };
+  if ((s === "liter" || s === "l") && a > 0 && a < 1) return { nilai: n * 1000, satuan: "ml", faktor: 1 / 1000 };
+  return { nilai: n, satuan: satuan || "", faktor: 1 };
+}
+
+// "2500 gram" → "2,5 kg". Pengganti pola `{formatStok(n)} {satuan}` untuk tampilan.
+export function formatSatuanOtomatis(nilai, satuan) {
+  const n = Number(nilai);
+  if (!isFinite(n)) return `0 ${satuan || ""}`.trim();
+  const k = konversiOtomatis(n, satuan);
+  return `${k.nilai.toLocaleString("id-ID", { maximumFractionDigits: 3 })} ${k.satuan}`.trim();
+}
