@@ -765,6 +765,13 @@ WHERE p.keterangan ~ ' - ID: [0-9a-fA-F-]{36}$'
 ALTER TABLE public.pengguna ADD COLUMN IF NOT EXISTS email character varying UNIQUE;
 ALTER TABLE public.pengguna ADD COLUMN IF NOT EXISTS is_disetujui boolean DEFAULT true;
 ALTER TABLE public.pengguna ALTER COLUMN password DROP NOT NULL;
+-- Bersihkan password plaintext lama (tidak pernah dipakai login — login resmi
+-- via Supabase Auth yang ter-hash). Aman diulang.
+UPDATE public.pengguna SET password = NULL WHERE password IS NOT NULL;
 DROP POLICY IF EXISTS "Registrasi mandiri" ON public.pengguna;
 CREATE POLICY "Registrasi mandiri" ON public.pengguna FOR INSERT TO anon
   WITH CHECK (role_akses = 'Kasir' AND is_disetujui = false AND is_deleted = false);
+
+  INSERT INTO public.pengguna (nama_lengkap, username, email, role_akses, is_disetujui, is_deleted)
+VALUES ('admin', 'admin', 'admin@fefina.com', 'Admin', true, false)
+ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email, role_akses = 'Admin', is_disetujui = true, is_deleted = false;
