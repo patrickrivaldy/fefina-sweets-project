@@ -56,7 +56,15 @@ export function RoleProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    // Muat awal + perbarui peran tiap status login berubah (masuk/keluar) agar
+    // menu tidak basi — sebelumnya harus refresh manual dulu baru sesuai peran.
+    // INITIAL_SESSION dikirim otomatis saat subscribe (pengganti refresh langsung).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") refresh();
+    });
+    return () => subscription.unsubscribe();
+  }, [refresh]);
 
   return (
     <RoleContext.Provider value={{ role, pengguna, loading, refresh }}>

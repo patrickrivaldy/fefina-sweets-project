@@ -19,7 +19,7 @@ export default function PenggunaPage() {
   const [err, setErr] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ nama_lengkap: "", username: "", email: "", password: "", role_akses: "Kasir", auth_id: "" });
+  const [form, setForm] = useState({ nama_lengkap: "", username: "", email: "", role_akses: "Kasir", auth_id: "" });
 
   const load = async () => {
     setLoading(true);
@@ -63,10 +63,10 @@ export default function PenggunaPage() {
     await load();
   };
 
-  const openAdd = () => { setEditing(null); setForm({ nama_lengkap: "", username: "", password: "", role_akses: "Kasir", auth_id: "" }); setErr(""); setShowForm(true); };
+  const openAdd = () => { setEditing(null); setForm({ nama_lengkap: "", username: "", email: "", role_akses: "Kasir", auth_id: "" }); setErr(""); setShowForm(true); };
   const openEdit = (row) => {
     setEditing(row);
-    setForm({ nama_lengkap: row.nama_lengkap, username: row.username, email: row.email || "", password: "", role_akses: row.role_akses || "Kasir", auth_id: row.auth_id || "" });
+    setForm({ nama_lengkap: row.nama_lengkap, username: row.username, email: row.email || "", role_akses: row.role_akses || "Kasir", auth_id: row.auth_id || "" });
     setErr(""); setShowForm(true);
   };
 
@@ -75,13 +75,11 @@ export default function PenggunaPage() {
     setErr("");
     if (!form.nama_lengkap.trim()) return setErr("Nama lengkap wajib diisi.");
     if (!form.username.trim()) return setErr("Username wajib diisi.");
-    if (!editing && !form.password) return setErr("Password wajib diisi untuk pengguna baru.");
     if (form.auth_id && !/^[0-9a-f-]{36}$/i.test(form.auth_id.trim())) return setErr("Auth ID harus UUID user Auth (atau kosongkan).");
     setBusy(true);
     try {
       if (editing) {
         const patch = { nama_lengkap: form.nama_lengkap.trim(), username: form.username.trim(), email: form.email.trim() || null, role_akses: form.role_akses, auth_id: form.auth_id.trim() || null };
-        if (form.password) patch.password = form.password;
         const { error } = await supabase.from("pengguna").update(patch).eq("id_pengguna", editing.id_pengguna);
         if (error) throw new Error(error.message);
       } else {
@@ -89,7 +87,6 @@ export default function PenggunaPage() {
           nama_lengkap: form.nama_lengkap.trim(),
           username: form.username.trim(),
           email: form.email.trim() || null,
-          password: form.password,
           role_akses: form.role_akses,
           auth_id: form.auth_id.trim() || null,
           is_disetujui: true, // dibuat admin langsung = disetujui
@@ -199,8 +196,7 @@ export default function PenggunaPage() {
                 <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} disabled={busy} placeholder="kasir01" className="h-11 w-full rounded-lg border border-slate-300 px-3.5 font-mono text-sm outline-none focus:border-emerald-700 focus:ring-[3px] focus:ring-emerald-600/15" /></div>
               <div><label className="mb-1.5 block text-[13px] font-bold">Email <span className="font-medium text-slate-400">(opsional)</span></label>
                 <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} disabled={busy} placeholder="staf@fefina.com" className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-sm outline-none focus:border-emerald-700 focus:ring-[3px] focus:ring-emerald-600/15" /></div>
-              <div><label className="mb-1.5 block text-[13px] font-bold">Password {editing ? "(kosongkan bila tidak diubah)" : "*"}</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} disabled={busy} placeholder="••••••" className="h-11 w-full rounded-lg border border-slate-300 px-3.5 text-sm outline-none focus:border-emerald-700 focus:ring-[3px] focus:ring-emerald-600/15" /></div>
+              <p className="rounded-lg bg-[#eff4ff] p-3 text-[11px] leading-relaxed text-slate-500">Password login diatur di Supabase Authentication, bukan di sini. Staf yang lupa password pakai &quot;Lupa password?&quot; di halaman Masuk.</p>
               <div><label className="mb-1.5 block text-[13px] font-bold">Peran</label>
                 <div className="grid grid-cols-3 gap-2">
                   {ROLES.map((r) => (

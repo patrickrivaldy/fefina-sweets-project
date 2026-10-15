@@ -229,8 +229,19 @@ bukan pengaman database — jangan bagikan akun login.
 
 Pendaftaran mandiri (butuh db-draft.md BAGIAN 8 sekali): staf buka halaman Daftar
 (link di halaman Masuk) → isi nama/username/email/password → namanya masuk daftar
-"Menunggu persetujuan" di menu Pengguna → Admin pilih peran + Setujui. Yang belum
-disetujui tidak bisa masuk walau email-passwordnya benar.
+"Menunggu persetujuan" di menu Pengguna → Admin pilih peran + Setujui. Akun auth
+lama yang login juga otomatis masuk daftar menunggu ini. Yang belum disetujui
+tidak bisa masuk walau email-passwordnya benar.
+
+Admin pertama (sekali, ganti emailnya): jalankan di SQL Editor, lalu login
+dengan email itu — tidak perlu tempel UID, login mencocokkan baris via email
+otomatis:
+
+```
+INSERT INTO public.pengguna (nama_lengkap, username, email, role_akses, is_disetujui, is_deleted)
+VALUES ('Pemilik Toko', 'owner', 'GANTI_DENGAN_EMAIL_ANDA', 'Admin', true, false)
+ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email, role_akses = 'Admin', is_disetujui = true, is_deleted = false;
+```
 
 ## Koreksi Salah Input (Void)
 

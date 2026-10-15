@@ -15,7 +15,7 @@ src/
     opname/page.js      → Stock Opname       (penyesuaian_stok)
     konsinyasi/page.js  → Konsinyasi         (nota + detail + mitra + pembayaran + aktivitas)
     reseller/page.js    → Data Reseller      (mitra_toko)
-    pengguna/page.js    → Pengguna           (setujui pendaftar + atur peran + taut auth_id)
+    pengguna/page.js    → Pengguna           (setujui pendaftar + atur peran; baris cocok via email otomatis)
     pengeluaran/page.js → Keuangan (RINGKASAN baca-saja: metrik + tren + 2 tabel)
     catat-pengeluaran/page.js → Pencatatan pengeluaran (form + hapus)
     transaksi/page.js   → Riwayat + Void     (transaksi_penjualan + detail_transaksi)
