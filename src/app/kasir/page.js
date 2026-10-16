@@ -1,304 +1,295 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
 
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import CartSidebar from "@/components/kasir/CartSidebar";
-import { supabase } from "@/lib/supabase";
-import { useCart } from "@/context/CartContext";
+import { useEffect, useMemo, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import DashboardLayout from "@/layouts/DashboardLayout";
+import EmptyState from "@/components/ui/EmptyState";
+import CartPanel from "@/features/kasir/components/CartPanel";
+import { supabase } from "@/config/supabase";
+import { useCart } from "@/store/CartContext";
+import { formatRupiah, wibDayBounds, todayWIB } from "@/utils/format";
+import {
+  Barcode,
+  X,
+  ArrowUpDown,
+  PackageSearch,
+  Plus,
+  Check,
+} from "lucide-react";
 
-const categories = ["Semua", "Manisan", "Permen", "Minuman"];
+const SORTS = [
+  { value: "nama", label: "Nama A–Z" },
+  { value: "murah", label: "Termurah" },
+  { value: "mahal", label: "Termahal" },
+  { value: "stok", label: "Stok terbanyak" },
+];
 
-export default function KasirPage() {
+function KasirInner() {
+  const params = useSearchParams();
   const { addToCart } = useCart();
-
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] =
-    useState("Semua");
-
+  const [search, setSearch] = useState(() => params.get("q") || "");
+  // sinkron bila datang dari search header saat sudah di halaman kasir
+  useEffect(() => {
+    setSearch(params.get("q") || "");
+  }, [params]);
+  const [sort, setSort] = useState("nama");
+  const [showSort, setShowSort] = useState(false);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshProducts, setRefreshProducts] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [addedId, setAddedId] = useState(null);
 
-  // =========================
-  // GET / READ DATA PRODUK
-  // =========================
   useEffect(() => {
-    const loadProducts = async () => {
+    const load = async () => {
       setLoading(true);
       setError("");
-
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .gt("stok", 0);
-
-      if (error) {
-        console.error(
-          "Gagal mengambil data produk:",
-          error
-        );
-
-        setError("Data produk gagal dimuat.");
+      const p = await supabase
+        .from("produk")
+        .select("id_produk, nama_produk, harga_jual, stok, foto, sku")
+        .eq("is_deleted", false)
+        .gt("stok", 0)
+        .order("nama_produk", { ascending: true });
+      if (p.error && /column|sku/i.test(p.error.message || "")) {
+        const retry = await supabase
+          .from("produk")
+          .select("id_produk, nama_produk, harga_jual, stok, foto")
+          .eq("is_deleted", false)
+          .gt("stok", 0)
+          .order("nama_produk", { ascending: true });
+        if (retry.error) {
+          setError("Tidak bisa memuat produk. Cek koneksi lalu coba lagi.");
+          setProducts([]);
+        } else setProducts(retry.data || []);
+      } else if (p.error) {
+        setError("Tidak bisa memuat produk. Cek koneksi lalu coba lagi.");
         setProducts([]);
-      } else {
-        setProducts(data || []);
-      }
-
+      } else setProducts(p.data || []);
       setLoading(false);
     };
+    load();
+  }, [refreshKey]);
 
-    loadProducts();
-  }, [refreshProducts]);
+  const filtered = useMemo(() => {
+    const k = search.trim().toLowerCase();
+    let list = k
+      ? products.filter((p) => p.nama_produk?.toLowerCase().includes(k) || p.sku?.toLowerCase().includes(k))
+      : [...products];
+    if (sort === "murah") list.sort((a, b) => a.harga_jual - b.harga_jual);
+    else if (sort === "mahal") list.sort((a, b) => b.harga_jual - a.harga_jual);
+    else if (sort === "stok") list.sort((a, b) => b.stok - a.stok);
+    return list;
+  }, [products, search, sort]);
 
-  // =========================
-  // FILTER SEARCH
-  // =========================
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.nama_produk
-      ?.toLowerCase()
-      .includes(search.toLowerCase());
-
-    return matchesSearch;
-  });
-
-  const formatRupiah = (value) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(value || 0);
+  const add = (p) => {
+    addToCart(p);
+    setAddedId(p.id_produk);
+    setTimeout(() => setAddedId(null), 800);
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* =========================
-            HEADER
-        ========================= */}
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Kasir
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Pilih produk untuk memulai transaksi penjualan.
-          </p>
-        </div>
-
-        {/* =========================
-            SEARCH & FILTER
-        ========================= */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          {/* Search Bar */}
-          <div className="relative mb-4">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              🔍
-            </span>
-
-            <input
-              type="text"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Cari nama produk..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100"
-            />
-          </div>
-
-          {/* Filter Kategori */}
-          <div>
-            <p className="mb-3 text-sm font-semibold text-slate-700">
-              Kategori
-            </p>
-
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  disabled={category !== "Semua"}
-                  onClick={() =>
-                    setSelectedCategory(category)
-                  }
-                  title={
-                    category !== "Semua"
-                      ? "Filter kategori belum tersedia karena kolom kategori belum ada di database."
-                      : ""
-                  }
-                  className={`shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
-                    selectedCategory === category
-                      ? "bg-orange-500 text-white shadow-sm"
-                      : category !== "Semua"
-                      ? "cursor-not-allowed bg-slate-100 text-slate-400"
-                      : "bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-600"
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-
-            <p className="mt-3 text-xs text-slate-400">
-              Filter kategori akan diaktifkan setelah data
-              kategori tersedia pada database.
-            </p>
-          </div>
-        </div>
-
-        {/* =========================
-            AREA PRODUK + CART
-        ========================= */}
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          {/* =========================
-              PRODUK
-          ========================= */}
-          <div className="min-w-0">
-            {/* Header Produk */}
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Produk
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {loading
-                    ? "Memuat data produk..."
-                    : `Menampilkan ${filteredProducts.length} produk`}
-                </p>
+    <div className="flex w-full flex-col gap-4">
+      <div className="grid grid-cols-12 items-start gap-5">
+        {/* Kiri: katalog */}
+        <section className="col-span-12 flex flex-col gap-4 xl:col-span-8">
+          <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              <div className="relative w-full">
+                <Barcode
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Ketik nama produk, SKU, atau scan barcode..."
+                  className="h-11 w-full rounded-lg bg-[#eff4ff] pl-10 pr-10 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/25"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Hapus"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  >
+                    <X size={17} />
+                  </button>
+                )}
               </div>
-
-              <span className="w-fit rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
-                Semua Produk
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowSort(!showSort)}
+                  className="flex h-11 items-center gap-1.5 rounded-lg bg-[#eff4ff] px-4 text-[13px] font-bold text-slate-700 hover:bg-slate-200"
+                >
+                  <ArrowUpDown size={15} /> Urutkan
+                </button>
+                {showSort && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Tutup urutan"
+                      onClick={() => setShowSort(false)}
+                      className="fixed inset-0 z-20 cursor-default bg-transparent"
+                    />
+                    <div className="absolute right-0 z-30 mt-1.5 w-44 overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-slate-200">
+                    {SORTS.map((s) => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => {
+                          setSort(s.value);
+                          setShowSort(false);
+                        }}
+                        className={`block w-full px-4 py-2.5 text-left text-[13px] hover:bg-slate-50 ${sort === s.value ? "font-bold text-emerald-700" : "text-slate-600"}`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="no-scrollbar mt-2.5 flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="whitespace-nowrap rounded-full bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white shadow-sm">
+                Semua ({products.length})
+              </span>
+              <span className="whitespace-nowrap rounded-full bg-[#eff4ff] px-4 py-1.5 text-xs font-bold text-slate-500">
+                Manisan Buah
               </span>
             </div>
+          </div>
 
-            {/* =========================
-                LOADING
-            ========================= */}
-            {loading ? (
-              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-50 text-2xl">
-                  ⏳
+          {loading ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="animate-pulse rounded-xl bg-white p-2.5 ring-1 ring-slate-200/60">
+                  <div className="aspect-square rounded-lg bg-slate-100" />
+                  <div className="mt-2 h-3.5 rounded bg-slate-100" />
+                  <div className="mt-2 h-3.5 w-2/3 rounded bg-slate-100" />
                 </div>
-
-                <p className="mt-4 text-sm font-medium text-slate-600">
-                  Memuat data produk...
-                </p>
-              </div>
-            ) : error ? (
-              /* =========================
-                 ERROR
-              ========================= */
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-6 py-16 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl">
-                  ⚠️
-                </div>
-
-                <h3 className="mt-4 text-lg font-semibold text-red-700">
-                  Data produk gagal dimuat
-                </h3>
-
-                <p className="mt-2 text-sm text-red-600">
-                  {error}
-                </p>
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              /* =========================
-                 EMPTY STATE
-              ========================= */
-              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-50 text-3xl">
-                  🔍
-                </div>
-
-                <h3 className="mt-5 text-lg font-semibold text-slate-800">
-                  Produk tidak ditemukan
-                </h3>
-
-                <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-                  Tidak ada produk yang sesuai dengan
-                  pencarian.
-                </p>
-
+              ))}
+            </div>
+          ) : error ? (
+            <EmptyState
+              icon={<PackageSearch size={24} />}
+              title="Gagal memuat produk"
+              message={error}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setRefreshKey((v) => v + 1)}
+                  className="h-12 rounded-lg bg-emerald-700 px-6 text-sm font-bold text-white"
+                >
+                  Coba lagi
+                </button>
+              }
+            />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<PackageSearch size={24} />}
+              title="Tidak ada hasil"
+              message={search ? `Tidak ada produk bernama "${search}".` : "Semua stok habis."}
+              action={search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="mt-5 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+                  className="h-12 rounded-lg bg-emerald-700 px-6 text-sm font-bold text-white"
                 >
-                  Reset Pencarian
+                  Tampilkan semua
                 </button>
-              </div>
-            ) : (
-              /* =========================
-                 GRID PRODUK
-              ========================= */
-              <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id_produk}
-                    className="group w-full max-w-340px overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-md"
+              )}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-4">
+              {filtered.map((p) => {
+                const done = addedId === p.id_produk;
+                return (
+                  <article
+                    key={p.id_produk}
+                    onClick={() => add(p)}
+                    className={`group flex cursor-pointer flex-col justify-between rounded-xl bg-white p-2.5 shadow-sm transition hover:shadow-md ${
+                      done ? "ring-2 ring-emerald-600" : "ring-1 ring-slate-200/70"
+                    }`}
                   >
-                    {/* Foto Produk */}
-                    <div className="flex h-44 items-center justify-center bg-orange-50">
-                      {product.foto ? (
-                        <img
-                          src={product.foto}
-                          alt={product.nama_produk}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-4xl shadow-sm">
-                          🍊
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Informasi Produk */}
-                    <div className="p-5">
-                      <h3 className="min-h-40px text-base font-bold text-slate-800">
-                        {product.nama_produk}
+                    <div>
+                      <div className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
+                        {p.foto ? (
+                          <Image
+                            src={p.foto}
+                            alt={p.nama_produk}
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                            className="object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-4xl font-extrabold text-slate-200">
+                            {p.nama_produk?.charAt(0) || "F"}
+                          </span>
+                        )}
+                        <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[11px] font-bold text-emerald-700 shadow-sm backdrop-blur-sm">
+                          Stok: {p.stok}
+                        </span>
+                        {done && (
+                          <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
+                            <Check size={14} strokeWidth={3} />
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Manisan
+                      </p>
+                      <h3 className="truncate text-[15px] font-bold leading-snug group-hover:text-emerald-700" title={p.nama_produk}>
+                        {p.nama_produk}
                       </h3>
-
-                      <p className="mt-4 text-lg font-bold text-slate-900">
-                        {formatRupiah(product.harga_jual)}
-                      </p>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        Stok: {product.stok}
-                      </p>
-
+                    </div>
+                    <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
+                      <span className="tnum text-[15px] font-bold text-emerald-700">
+                        {formatRupiah(p.harga_jual)}
+                      </span>
                       <button
                         type="button"
-                        onClick={() =>
-                          addToCart(product)
-                        }
-                        className="mt-5 w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
+                        aria-label="Tambah"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          add(p);
+                        }}
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                          done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-[#eff4ff] text-emerald-700 group-hover:bg-emerald-700 group-hover:text-white"
+                        }`}
                       >
-                        Tambah
+                        <Plus size={17} strokeWidth={2.5} />
                       </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
-          {/* =========================
-              CART SIDEBAR
-          ========================= */}
-          <div className="xl:sticky xl:top-6 xl:self-start">
-            <CartSidebar
-              onCheckoutSuccess={() =>
-              setRefreshProducts((value) => value + 1)
-            }
-            />
+        {/* Kanan: panel bayar */}
+        <aside className="col-span-12 xl:col-span-4">
+          <div className="xl:sticky xl:top-20">
+            <CartPanel onPaid={() => setRefreshKey((v) => v + 1)} />
           </div>
-        </div>
+        </aside>
       </div>
+    </div>
+  );
+}
+
+export default function KasirPage() {
+  return (
+    <DashboardLayout>
+      <Suspense fallback={<div className="p-10 text-center text-sm text-slate-500">Memuat kasir…</div>}>
+        <KasirInner />
+      </Suspense>
     </DashboardLayout>
   );
 }
