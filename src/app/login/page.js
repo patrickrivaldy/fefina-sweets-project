@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+<<<<<<< HEAD
 import { useRouter } from "next/navigation";
+=======
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useRole } from "@/store/RoleContext";
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
 import { supabase } from "@/config/supabase";
 import { Store, Mail, LockKeyhole, Eye, EyeOff, ArrowRight, ShoppingCart, Wallet, ChartColumn } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+<<<<<<< HEAD
+=======
+  const { refresh } = useRole();
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -45,6 +55,77 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
+<<<<<<< HEAD
+=======
+      // Gerbang peran (toleran instalasi lama tanpa kolom baru).
+      // Baris staf dicocokkan via auth_id DULU, lalu via email (identitas yang
+      // sudah diverifikasi Auth) — jadi tidak perlu tempel UID manual, tidak
+      // perlu daftar email pemilik, tidak ada balapan. Ketemu via email →
+      // auth_id ditulis balik agar login berikut langsung cocok.
+      // Masuk hanya bila baris aktif + disetujui (butuh BAGIAN 8).
+      const uid = data.user.id;
+      const emailLogin = (data.user.email || "").toLowerCase();
+      const tolak = async (pesan) => {
+        await supabase.auth.signOut();
+        setError(pesan);
+        setLoading(false);
+      };
+      const q1 = await supabase.from("pengguna").select("id_pengguna, is_deleted, is_disetujui, role_akses").eq("auth_id", uid).maybeSingle();
+      let prof = null;
+      let lawas = false;
+      let galat = false;
+      if (!q1.error) {
+        prof = q1.data || null;
+      } else if (/column|is_disetujui/i.test(q1.error.message || "")) {
+        const q2 = await supabase.from("pengguna").select("id_pengguna, is_deleted").eq("auth_id", uid).maybeSingle();
+        if (!q2.error) {
+          prof = q2.data || null;
+          lawas = true;
+        } else galat = true;
+      } else galat = true;
+      if (galat) {
+        await tolak("Tidak bisa memeriksa data staf. Coba lagi atau hubungi admin.");
+        return;
+      }
+      // Gagal cocok auth_id → coba cocok email (kolom email ada bila BAGIAN 8 jalan).
+      if (!prof && !lawas && emailLogin) {
+        const qe = await supabase.from("pengguna").select("id_pengguna, is_deleted, is_disetujui, role_akses").eq("email", emailLogin).eq("is_deleted", false).maybeSingle();
+        if (!qe.error && qe.data) {
+          prof = qe.data;
+          await supabase.from("pengguna").update({ auth_id: uid }).eq("id_pengguna", prof.id_pengguna);
+        }
+      }
+      if (prof?.is_deleted) {
+        await tolak("Akun ini dinonaktifkan. Hubungi admin.");
+        return;
+      }
+      if (lawas && !prof) {
+        // Instalasi lama tanpa baris: lolos via mode kompatibilitas (peran Admin).
+      } else if (!lawas && (!prof || prof.is_disetujui === false)) {
+        if (!prof) {
+          // Auth valid tapi belum punya baris staf: daftarkan otomatis sebagai
+          // pendaftar agar admin bisa acc di menu Pengguna.
+          const base0 = emailLogin.split("@")[0].replace(/[^a-zA-Z0-9_.]/g, "") || "staf";
+          let terdaftar = false;
+          for (const uname of [base0, `${base0}.${uid.slice(0, 4)}`]) {
+            const ins = await supabase.from("pengguna").insert([{
+              nama_lengkap: base0, username: uname, email: emailLogin || null,
+              auth_id: uid, role_akses: "Kasir", is_disetujui: false, is_deleted: false,
+            }]);
+            if (!ins.error) { terdaftar = true; break; }
+            if (!/duplicate|unique|already exists/i.test(ins.error.message || "")) break;
+          }
+          await tolak(terdaftar
+            ? "Akunmu otomatis didaftarkan sebagai pendaftar. Tunggu admin menyetujui, lalu masuk lagi."
+            : "Akun belum terdaftar di data staf. Daftar dulu atau hubungi admin.");
+          return;
+        }
+        await tolak("Pendaftaranmu belum disetujui admin. Tunggu kabar atau hubungi admin.");
+        return;
+      }
+      // Segarkan peran sebelum masuk dashboard agar menu langsung sesuai (tanpa refresh manual).
+      await refresh();
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
       router.replace("/");
       router.refresh();
     } catch {
@@ -126,6 +207,13 @@ export default function LoginPage() {
                   {loading ? "Masuk…" : <>Masuk <ArrowRight size={16} strokeWidth={2.5} /></>}
                 </button>
 
+<<<<<<< HEAD
+=======
+                <p className="text-center text-[13px] text-slate-500">
+                  Belum punya akun? <Link href="/register" className="font-bold text-emerald-700 hover:underline">Daftar di sini</Link>
+                </p>
+
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
                 <div className="text-center">
                   {!lupa ? (
                     <button type="button" onClick={() => { setLupa(true); setLupaMsg(""); }} className="text-[13px] font-bold text-emerald-700 hover:underline">

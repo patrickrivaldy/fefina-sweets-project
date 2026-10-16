@@ -5,11 +5,18 @@ import Link from "next/link";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+<<<<<<< HEAD
 import { supabase } from "@/config/supabase";
 import { formatRupiah, formatTanggal, todayWIB, wibDateTime } from "@/utils/format";
 import { KATEGORI_PENGELUARAN } from "@/constants/app";
 import RupiahInput from "@/components/ui/RupiahInput";
 import { Wallet, Trash2, Search, ArrowLeft, Check } from "lucide-react";
+=======
+import AddPengeluaranModal from "@/features/pengeluaran/components/AddPengeluaranModal";
+import { supabase } from "@/config/supabase";
+import { formatRupiah, formatTanggal, wibDateTime } from "@/utils/format";
+import { Wallet, Trash2, Search, ArrowLeft, Check, Plus } from "lucide-react";
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
 
 export default function CatatPengeluaranPage() {
   const [rows, setRows] = useState([]);
@@ -17,10 +24,16 @@ export default function CatatPengeluaranPage() {
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+<<<<<<< HEAD
   const [formErr, setFormErr] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [adaKategori, setAdaKategori] = useState(true);
   const [form, setForm] = useState({ keterangan: "", nominal: "", tanggal: todayWIB(), kategori: "Operasional" });
+=======
+  const [okMsg, setOkMsg] = useState("");
+  const [adaKategori, setAdaKategori] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
 
   const load = async () => {
     setLoading(true);
@@ -57,6 +70,7 @@ export default function CatatPengeluaranPage() {
 
   const totalTampil = filtered.reduce((s, x) => s + (+x.nominal || 0), 0);
 
+<<<<<<< HEAD
   const simpan = async (e) => {
     e.preventDefault();
     setFormErr("");
@@ -73,6 +87,21 @@ export default function CatatPengeluaranPage() {
         tanggal: form.tanggal ? wibDateTime(form.tanggal) : new Date().toISOString(),
       };
       if (adaKategori) payload.kategori = form.kategori || "Lainnya";
+=======
+  const simpan = async ({ keterangan, nominal, tanggal, kategori }) => {
+    setOkMsg("");
+    if (!keterangan?.trim()) throw new Error("Tulis keperluannya dulu.");
+    const n = Number(nominal);
+    if (!n || n <= 0) throw new Error("Nominal harus lebih dari 0.");
+    setBusy(true);
+    try {
+      const payload = {
+        keterangan: keterangan.trim(),
+        nominal: n,
+        tanggal: tanggal ? wibDateTime(tanggal) : new Date().toISOString(),
+      };
+      if (adaKategori) payload.kategori = kategori || "Lainnya";
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
       let ins = await supabase.from("pengeluaran_toko").insert([payload]);
       if (ins.error && adaKategori && /column|kategori/i.test(ins.error.message || "")) {
         delete payload.kategori;
@@ -80,11 +109,17 @@ export default function CatatPengeluaranPage() {
         ins = await supabase.from("pengeluaran_toko").insert([payload]);
       }
       if (ins.error) throw new Error(ins.error.message);
+<<<<<<< HEAD
       setForm({ keterangan: "", nominal: "", tanggal: todayWIB(), kategori: "Operasional" });
       setOkMsg(`Tersimpan: keluar ${formatRupiah(n)}.`);
       await load();
     } catch (err) {
       setFormErr(err.message || "Gagal menyimpan.");
+=======
+      setOkMsg(`Tersimpan: keluar ${formatRupiah(n)}.`);
+      setShowAdd(false);
+      await load();
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
     } finally {
       setBusy(false);
     }
@@ -104,6 +139,7 @@ export default function CatatPengeluaranPage() {
           title="Pencatatan Pengeluaran"
           subtitle="Catat tiap uang keluar selain kulakan bahan. Ringkasannya ada di Keuangan."
           action={
+<<<<<<< HEAD
             <Link href="/pengeluaran" className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
               <ArrowLeft size={16} /> Ringkasan Keuangan
             </Link>
@@ -162,6 +198,28 @@ export default function CatatPengeluaranPage() {
 
           {/* Daftar */}
           <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/70 xl:col-span-3">
+=======
+            <div className="flex gap-2">
+              <Link href="/pengeluaran" className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+                <ArrowLeft size={16} /> Ringkasan
+              </Link>
+              <button type="button" onClick={() => { setOkMsg(""); setShowAdd(true); }} className="flex h-12 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white shadow-sm hover:bg-emerald-800">
+                <Plus size={16} /> Catat Pengeluaran
+              </button>
+            </div>
+          }
+        />
+
+        {okMsg && (
+          <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3.5 text-[13px] font-semibold text-emerald-700 shadow-sm ring-1 ring-emerald-100">
+            <Check size={15} strokeWidth={3} /> {okMsg}
+          </p>
+        )}
+
+        <div className="grid items-start gap-4">
+          {/* Daftar */}
+          <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200/70">
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
             <div className="px-5 pb-1 pt-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-[15px] font-bold"><Wallet size={16} className="text-red-500" /> Terakhir Dicatat</h2>
@@ -217,9 +275,17 @@ export default function CatatPengeluaranPage() {
                 </table>
               )}
             </div>
+<<<<<<< HEAD
           </section>
         </div>
       </div>
+=======
+            </section>
+        </div>
+      </div>
+
+      <AddPengeluaranModal isOpen={showAdd} onClose={() => setShowAdd(false)} onSubmit={simpan} submitting={busy} adaKategori={adaKategori} />
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
     </DashboardLayout>
   );
 }

@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import Badge from "@/components/ui/Badge";
 import EmptyState from "@/components/ui/EmptyState";
+<<<<<<< HEAD
+=======
+import Select from "@/components/ui/Select";
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
 import AddKonsinyasiModal from "@/features/konsinyasi/components/AddKonsinyasiModal";
 import EditKonsinyasiModal from "@/features/konsinyasi/components/EditKonsinyasiModal";
 import BarangLakuModal from "@/features/konsinyasi/components/BarangLakuModal";
@@ -38,6 +42,10 @@ export default function KonsinyasiPage() {
   const [tab, setTab] = useState("nota");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Semua");
+<<<<<<< HEAD
+=======
+  const [filterToko, setFilterToko] = useState("semua"); // "semua" atau id_mitra
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
   const [busy, setBusy] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -205,6 +213,12 @@ export default function KonsinyasiPage() {
     await potongBatchFIFO(id_produk, qty);
   };
 
+<<<<<<< HEAD
+=======
+  // Nama produk untuk keterangan pengeluaran (tampilkan nama, bukan ID).
+  const namaProduk = (id_produk) => products.find((p) => p.id_produk === id_produk)?.nama_produk || id_produk;
+
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
   const editSubmit = async (d) => {
     setBusy(true);
     try {
@@ -285,7 +299,11 @@ export default function KonsinyasiPage() {
               const rugi = tR * (mmap[l.id_produk] || 0);
               if (rugi > 0) {
                 await supabase.from("pengeluaran_toko").insert([{
+<<<<<<< HEAD
                   keterangan: `Rugi Konsinyasi Rusak susulan (${tR} pcs) - ID: ${l.id_produk} - Nota ${d.id_konsinyasi}`,
+=======
+                  keterangan: `Rugi Konsinyasi Rusak susulan (${tR} pcs) - ${namaProduk(l.id_produk)} (Nota ${d.id_konsinyasi})`,
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
                   nominal: Math.round(rugi), kategori: "Kerugian / Rusak",
                 }]);
               }
@@ -315,15 +333,34 @@ export default function KonsinyasiPage() {
 
   const remove = async (c) => {
     const nMacam = (c.detail_konsinyasi || []).length;
+<<<<<<< HEAD
     if (!window.confirm(`Hapus nota ${c.id_konsinyasi} (${nMacam} macam)? Sisa barang kembali ke stok.`)) return;
+=======
+    const sudahSelesai = c.status_konsinyasi === "Selesai";
+    if (!window.confirm(
+      sudahSelesai
+        ? `Hapus nota ${c.id_konsinyasi} (${nMacam} macam)? Stok sudah kembali saat nota diselesaikan; hanya riwayat yang dihapus.`
+        : `Hapus nota ${c.id_konsinyasi} (${nMacam} macam)? Sisa barang kembali ke stok.`
+    )) return;
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
     setBusy(true);
     try {
       const dets = c.detail_konsinyasi || [];
       await supabase.from("detail_konsinyasi").delete().eq("id_konsinyasi", c.id_konsinyasi);
       await supabase.from("nota_konsinyasi").delete().eq("id_konsinyasi", c.id_konsinyasi);
+<<<<<<< HEAD
       for (const det of dets) {
         const sisa = Math.max(0, (det.jumlah_titip || 0) - (det.jumlah_laku || 0) - (det.jumlah_retur_bagus || 0) - (det.jumlah_retur_rusak || 0));
         if (sisa > 0) await tambahStok(det.id_produk, sisa);
+=======
+      // Nota Selesai: trigger DB sudah mengembalikan retur bagus + sisa ke stok,
+      // jadi hapus tidak boleh menambah lagi (dobel). Nota Berjalan: sisa dikembalikan manual.
+      if (!sudahSelesai) {
+        for (const det of dets) {
+          const sisa = Math.max(0, (det.jumlah_titip || 0) - (det.jumlah_laku || 0) - (det.jumlah_retur_bagus || 0) - (det.jumlah_retur_rusak || 0));
+          if (sisa > 0) await tambahStok(det.id_produk, sisa);
+        }
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
       }
       await Promise.all([loadRows(), loadForm()]);
     } catch (e) {
@@ -397,7 +434,11 @@ export default function KonsinyasiPage() {
               const rugi = tR * (mmap[lama.id_produk] || 0);
               if (rugi > 0) {
                 await supabase.from("pengeluaran_toko").insert([{
+<<<<<<< HEAD
                   keterangan: `Rugi Konsinyasi Rusak susulan (${tR} pcs) - ID: ${lama.id_produk} - Nota ${consignment.id_konsinyasi}`,
+=======
+                  keterangan: `Rugi Konsinyasi Rusak susulan (${tR} pcs) - ${namaProduk(lama.id_produk)} (Nota ${consignment.id_konsinyasi})`,
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
                   nominal: Math.round(rugi), kategori: "Kerugian / Rusak",
                 }]);
               }
@@ -483,6 +524,7 @@ export default function KonsinyasiPage() {
         .eq("id_konsinyasi", c.id_konsinyasi);
       if (error) throw new Error(error.message);
       await Promise.all([loadRows(), loadForm()]);
+<<<<<<< HEAD
       // Verifikasi: tiap retur bagus harus menaikkan stok sebesar itu.
       const susulan = [];
       for (const d of (c.detail_konsinyasi || [])) {
@@ -491,6 +533,21 @@ export default function KonsinyasiPage() {
         const { data } = await supabase.from("produk").select("stok").eq("id_produk", d.id_produk).single();
         const naik = (data?.stok ?? 0) - (sebelum[d.id_produk] ?? 0);
         if (naik < rb) susulan.push({ id_produk: d.id_produk, kurang: rb - Math.max(0, naik) });
+=======
+      // Verifikasi: tiap baris harus menaikkan stok sebesar retur bagus + sisa
+      // yang belum jelas (sesuai trigger G). Agregat per produk agar baris
+      // ganda produk yang sama tidak dihitung dobel.
+      const harap = {};
+      for (const d of (c.detail_konsinyasi || [])) {
+        const kembali = Math.max(0, (d.jumlah_titip || 0) - (d.jumlah_laku || 0) - (d.jumlah_retur_rusak || 0));
+        if (kembali > 0 && d.id_produk) harap[d.id_produk] = (harap[d.id_produk] || 0) + kembali;
+      }
+      const susulan = [];
+      for (const [id, exp] of Object.entries(harap)) {
+        const { data } = await supabase.from("produk").select("stok").eq("id_produk", id).single();
+        const naik = (data?.stok ?? 0) - (sebelum[id] ?? 0);
+        if (naik < exp) susulan.push({ id_produk: id, kurang: exp - Math.max(0, naik) });
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
       }
       if (susulan.length > 0) {
         for (const s of susulan) await tambahStok(s.id_produk, s.kurang);
@@ -541,6 +598,10 @@ export default function KonsinyasiPage() {
   }, [rows, bayar]);
 
   const filtered = rows.filter((r) => {
+<<<<<<< HEAD
+=======
+    if (filterToko !== "semua" && (r.mitra_toko?.id_mitra || r.id_mitra) !== filterToko) return false;
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
     if (filter !== "Semua" && r.status_pembayaran !== filter) return false;
     const k = search.trim().toLowerCase();
     if (!k) return true;
@@ -558,6 +619,20 @@ export default function KonsinyasiPage() {
     const lakuN = dets.reduce((s, d) => s + (d.jumlah_laku || 0), 0);
     return { titip, laku: lakuN, rate: titip > 0 ? Math.round((lakuN / titip) * 100) : 0, macam: dets.length };
   })();
+<<<<<<< HEAD
+=======
+  // Ringkasan toko yang difilter: sudah titip berapa kali + total per toko.
+  const tokoDipilih = filterToko !== "semua" ? resellerFull.find((x) => x.id_mitra === filterToko) : null;
+  const tokoStats = (() => {
+    if (!tokoDipilih) return null;
+    const ns = rows.filter((x) => (x.mitra_toko?.id_mitra || x.id_mitra) === tokoDipilih.id_mitra);
+    const titip = ns.reduce((s, r) => s + sumLines(r, (d) => d.jumlah_titip || 0), 0);
+    const lakuN = ns.reduce((s, r) => s + sumLines(r, (d) => d.jumlah_laku || 0), 0);
+    const berjalan = ns.filter((r) => r.status_konsinyasi !== "Selesai").length;
+    const sisaTag = ns.reduce((s, r) => s + sisaOf(r), 0);
+    return { n: ns.length, titip, laku: lakuN, berjalan, sisaTag };
+  })();
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
 
   const belumCount = rows.filter((r) => r.status_pembayaran !== "Lunas").length;
   const lunasCount = rows.filter((r) => r.status_pembayaran === "Lunas").length;
@@ -579,7 +654,11 @@ export default function KonsinyasiPage() {
               Manajemen Konsinyasi & Reseller
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-slate-500">
+<<<<<<< HEAD
               Pantau stok titipan mitra, verifikasi barang laku, dan percepat penagihan bagi hasil.
+=======
+              Untuk apa: nitip barang ke toko-toko, memantau yang laku, menagih, dan menarik sisa kembali. Satu toko boleh punya banyak nota.
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
             </p>
           </div>
           <div className="flex gap-2">
@@ -592,6 +671,27 @@ export default function KonsinyasiPage() {
           </div>
         </div>
 
+<<<<<<< HEAD
+=======
+        {/* Penuntun cara pakai — statis, tanpa logika */}
+        <ol className="grid gap-2 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-200/60 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["1", "Buat Nota Titip", "tiap antar barang ke toko"],
+            ["2", "Catat Laku & Retur", "tiap cek ke toko"],
+            ["3", "Catat Bayar", "tiap terima uang"],
+            ["4", "Selesaikan Nota", "kalau semua barang jelas"],
+          ].map(([n, t, s]) => (
+            <li key={n} className="flex items-center gap-2.5 rounded-lg bg-[#eff4ff]/60 px-3 py-2 ring-1 ring-slate-100">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">{n}</span>
+              <span>
+                <span className="block text-[13px] font-bold leading-tight">{t}</span>
+                <span className="block text-[11px] text-slate-500">{s}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
         {/* Metrik */}
         {!fiturMigrasi && (
           <div className="rounded-xl bg-amber-50 p-3.5 text-xs leading-relaxed text-amber-800 ring-1 ring-amber-200">
@@ -644,6 +744,18 @@ export default function KonsinyasiPage() {
             </div>
           </div>
           <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+<<<<<<< HEAD
+=======
+            <div className="sm:w-64 sm:shrink-0">
+              <Select value={filterToko} onChange={(e) => setFilterToko(e.target.value)} variant="filter">
+                <option value="semua">Semua toko ({resellerFull.length})</option>
+                {resellerFull.map((r) => {
+                  const n = rows.filter((x) => (x.mitra_toko?.id_mitra || x.id_mitra) === r.id_mitra).length;
+                  return <option key={r.id_mitra} value={r.id_mitra}>{r.nama_toko} ({n} nota)</option>;
+                })}
+              </Select>
+            </div>
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
             <label className="flex h-11 flex-1 items-center gap-2 rounded-lg bg-[#eff4ff] px-3.5 focus-within:ring-2 focus-within:ring-emerald-600/25">
               <Search size={16} className="shrink-0 text-slate-400" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari No. Nota atau nama toko..." className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
@@ -685,6 +797,36 @@ export default function KonsinyasiPage() {
           <div className="grid grid-cols-12 items-start gap-5">
             {/* Nota list */}
             <section className="col-span-12 flex flex-col gap-3 xl:col-span-8">
+<<<<<<< HEAD
+=======
+              {tokoDipilih && tokoStats && (
+                <div className="rounded-xl bg-emerald-700 p-4 text-white shadow-sm sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-200">Fokus toko • sudah titip {tokoStats.n} kali</p>
+                      <p className="mt-0.5 text-lg font-bold leading-tight">{tokoDipilih.nama_toko}</p>
+                      {tokoDipilih.no_whatsapp && <p className="mt-0.5 text-xs text-emerald-100">+{tokoDipilih.no_whatsapp}</p>}
+                    </div>
+                    <button type="button" onClick={() => setFilterToko("semua")} className="h-9 rounded-lg bg-white/15 px-3.5 text-xs font-bold hover:bg-white/25">
+                      ← Semua toko
+                    </button>
+                  </div>
+                  <div className="tnum mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                    {[
+                      [`${tokoStats.n}`, "nota total"],
+                      [`${tokoStats.berjalan}`, "nota berjalan"],
+                      [`${tokoStats.laku}/${tokoStats.titip}`, "pcs laku / titip"],
+                      [formatRupiah(tokoStats.sisaTag), "sisa tagihan"],
+                    ].map(([v, l]) => (
+                      <div key={l} className="rounded-lg bg-white/15 px-2 py-2.5">
+                        <p className="break-words text-[15px] font-bold leading-tight">{v}</p>
+                        <p className="mt-0.5 text-[11px] text-emerald-100">{l}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
               {loading ? (
                 <p className="rounded-xl bg-white p-10 text-center text-sm text-slate-500 shadow-sm">Memuat nota…</p>
               ) : error ? (

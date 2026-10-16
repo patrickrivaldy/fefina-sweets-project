@@ -20,6 +20,7 @@ export default function DashboardLayout({ children }) {
       <div className="lg:pl-60">
         <Header onMenu={() => setOpen(true)} />
         <main className="mx-auto w-full max-w-[1400px] px-4 pb-10 pt-20 sm:px-6">
+<<<<<<< HEAD
           
           {loading ? (
               <div className="flex min-h-[50vh] items-center justify-center">
@@ -41,6 +42,17 @@ export default function DashboardLayout({ children }) {
               children
             )}
 
+=======
+          {ditahan ? (
+            <EmptyState
+              icon={<ShieldAlert size={24} />}
+              title="Di luar peranmu"
+              message={`Halaman ini khusus peran lain. Peranmu saat ini: ${role}. Minta Admin menautkan akunmu di menu Pengguna.`}
+            />
+          ) : (
+            children
+          )}
+>>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
         </main>
       </div>
     </div>
