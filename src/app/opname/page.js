@@ -32,7 +32,11 @@ export default function OpnamePage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    // Jalankan pemuatan setelah effect selesai agar tidak memicu cascading render.
+    const frame = requestAnimationFrame(() => { void load(); });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const filtered = useMemo(() => {
     const k = q.trim().toLowerCase();

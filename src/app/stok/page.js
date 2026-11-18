@@ -37,7 +37,9 @@ export default function StokPage() {
   };
 
   useEffect(() => {
-    load();
+    // Jalankan pemuatan setelah effect selesai agar tidak memicu cascading render.
+    const frame = requestAnimationFrame(() => { void load(); });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const filtered = useMemo(

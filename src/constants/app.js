@@ -57,3 +57,13 @@ export const LIMITS = {
   transaksi: 300,
   opname: 300,
 };
+
+
+/**
+ * Mode baca-saja sementara untuk mendukung migrasi backend.
+ * true  = operasi tulis dinonaktifkan melalui pemeriksaan frontend.
+ * false = operasi tulis dapat digunakan kembali.
+ *
+ * Catatan: ini bukan pengganti keamanan database/RLS.
+ */
+export const READ_ONLY_MODE = true;

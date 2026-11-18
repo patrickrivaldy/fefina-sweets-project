@@ -1,3 +1,4 @@
+
 @import "tailwindcss";
 
 @theme {
@@ -17,22 +18,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-<<<<<<< HEAD
-=======
-/* Scrollbar utama halaman disembunyikan agar tampilan konsisten
-   (scroll tetap jalan via mouse/touch; panel dalam tetap pakai .nice-scroll). */
-html {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-html::-webkit-scrollbar,
-body::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
->>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
 ::selection {
   background: #a7f3d0;
 }
@@ -45,16 +30,20 @@ body::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 .nice-scroll::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 999px;
 }
+
 .nice-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   scrollbar-width: none;
 }
@@ -64,22 +53,51 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
+/* =========================================
+   TAMPILAN KHUSUS LAPORAN PDF
+========================================= */
+
+/* Area laporan tidak tampil pada halaman aplikasi */
+.print-only-report {
+  display: none;
+}
+
+/* =========================================
+   PENGATURAN CETAK
+========================================= */
+
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
 @media print {
   body {
+    min-height: 0 !important;
     background: #fff !important;
+    color: #000 !important;
   }
+
+  /* Sembunyikan semua elemen aplikasi */
   body * {
     visibility: hidden;
   }
+
+  /* =====================================
+     CETAK STRUK - PERTAHANKAN FITUR LAMA
+  ====================================== */
+
   #struk-area,
   #struk-area * {
     visibility: visible;
   }
+
   #struk-area {
     position: absolute;
     inset: 0 auto auto 0;
@@ -89,7 +107,191 @@ input[type="number"] {
     font-size: 12px;
     color: #000;
   }
+
+  /* =====================================
+     CETAK LAPORAN LABA RUGI
+  ====================================== */
+
+  #laporan-print-area,
+  #laporan-print-area * {
+    visibility: visible;
+  }
+
+  #laporan-print-area {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    box-sizing: border-box;
+  }
+
+  /* Judul dokumen */
+  .print-report-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .print-report-header h1 {
+    margin: 0 0 5px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #166534 !important;
+  }
+
+  .print-report-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000 !important;
+  }
+
+  .print-report-header p {
+    margin: 6px 0 0;
+    font-size: 10px;
+    color: #444 !important;
+  }
+
+  .print-report-line {
+    margin-top: 12px;
+    border-bottom: 2px solid #222;
+  }
+
+  /* Ringkasan keuangan */
+  .print-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .print-summary > div {
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 10px;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .print-summary span {
+    display: block;
+    margin-bottom: 6px;
+    color: #444 !important;
+    font-size: 9px;
+  }
+
+  .print-summary strong {
+    display: block;
+    color: #000 !important;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* Judul tabel */
+  .print-table-title {
+    margin: 0 0 9px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #000 !important;
+  }
+
+  /* Tabel laporan */
+  .print-report-table {
+    width: 100% !important;
+    border-collapse: collapse;
+    table-layout: auto;
+    font-size: 9px;
+  }
+
+  .print-report-table th,
+  .print-report-table td {
+    border: 1px solid #999;
+    padding: 7px 5px;
+    color: #000 !important;
+    text-align: right;
+    vertical-align: middle;
+  }
+
+  .print-report-table th {
+    background: #eaeaea !important;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .print-report-table th:nth-child(2),
+  .print-report-table td:nth-child(2) {
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  /* Baris total */
+  .print-total-row {
+    background: #eaeaea !important;
+    font-weight: 800;
+  }
+
+  .print-total-row td {
+    border-top: 2px solid #333;
+    font-weight: 800;
+  }
+
+  .print-empty {
+    padding: 15px;
+    color: #444 !important;
+    text-align: center;
+  }
+
+  /* Catatan perhitungan */
+  .print-report-notes {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #aaa;
+    color: #222 !important;
+    font-size: 9px;
+    line-height: 1.5;
+  }
+
+  .print-report-notes strong {
+    font-weight: 700;
+  }
+
+  .print-report-notes p {
+    margin: 4px 0;
+  }
+
+  /* Footer dokumen */
+  .print-report-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 25px;
+    padding-top: 8px;
+    border-top: 1px solid #ccc;
+    color: #444 !important;
+    font-size: 9px;
+  }
+
+  /* Sembunyikan tombol dan filter */
   .no-print {
     display: none !important;
+  }
+
+  /* Hindari pemotongan baris tabel */
+  .print-report-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Pertahankan warna cetak */
+  #laporan-print-area {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

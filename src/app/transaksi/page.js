@@ -11,7 +11,7 @@ import { usePeriode } from "@/hooks/usePeriode";
 import { useRole } from "@/store/RoleContext";
 import { ReceiptText, Search, Download, Printer, X } from "lucide-react";
 
-
+  
 export default function TransaksiPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -20,30 +20,11 @@ export default function DashboardLayout({ children }) {
       <div className="lg:pl-60">
         <Header onMenu={() => setOpen(true)} />
         <main className="mx-auto w-full max-w-[1400px] px-4 pb-10 pt-20 sm:px-6">
-<<<<<<< HEAD
-          
           {loading ? (
-              <div className="flex min-h-[50vh] items-center justify-center">
-                <p className="text-sm text-gray-500">
-                  Memverifikasi akses pengguna...
-                </p>
-              </div>
-            ) : ditahan ? (
-              <EmptyState
-                icon={<ShieldAlert size={24} />}
-                title="Akses ditolak"
-                message={
-                  role
-                    ? `Halaman ini tidak tersedia untuk role ${role}.`
-                    : "Role akun belum terverifikasi. Silakan hubungi Admin."
-                }
-              />
-            ) : (
-              children
-            )}
-
-=======
-          {ditahan ? (
+            <div className="flex min-h-[50vh] items-center justify-center">
+              <p className="text-sm text-slate-500">Memverifikasi akses pengguna...</p>
+            </div>
+          ) : ditahan ? (
             <EmptyState
               icon={<ShieldAlert size={24} />}
               title="Di luar peranmu"
@@ -52,7 +33,6 @@ export default function DashboardLayout({ children }) {
           ) : (
             children
           )}
->>>>>>> abdc9f205773143f9080885b9c15d7e367fd4354
         </main>
       </div>
     </div>

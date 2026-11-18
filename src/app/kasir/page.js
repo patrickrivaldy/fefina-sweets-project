@@ -32,7 +32,9 @@ function KasirInner() {
   const [search, setSearch] = useState(() => params.get("q") || "");
   // sinkron bila datang dari search header saat sudah di halaman kasir
   useEffect(() => {
-    setSearch(params.get("q") || "");
+    // Sinkronkan pencarian dari URL setelah render berjalan.
+    const frame = requestAnimationFrame(() => setSearch(params.get("q") || ""));
+    return () => cancelAnimationFrame(frame);
   }, [params]);
   const [sort, setSort] = useState("nama");
   const [showSort, setShowSort] = useState(false);
