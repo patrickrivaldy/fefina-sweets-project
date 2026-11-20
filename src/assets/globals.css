@@ -1,4 +1,3 @@
-
 @import "tailwindcss";
 
 @theme {
@@ -6,16 +5,50 @@
     "Segoe UI", Roboto, sans-serif;
 }
 
+:root {
+  color-scheme: light;
+  --page-bg: #f7f9fd;
+  --brand: #047857;
+  --brand-dark: #065f46;
+}
+
 html,
 body {
   min-height: 100%;
+  width: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: #f8f9ff;
+  overflow-x: clip;
+  background: var(--page-bg);
   color: #0b1c30;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"],
+a {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 3px solid rgb(16 185 129 / 35%);
+  outline-offset: 2px;
 }
 
 ::selection {
@@ -24,6 +57,36 @@ body {
 
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+.dashboard-page {
+  min-width: 0;
+}
+
+.dashboard-stat-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgb(226 232 240 / 85%);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.dashboard-stat-card:hover {
+  border-color: rgb(167 243 208 / 90%);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 6%);
+  transform: translateY(-1px);
+}
+
+.dashboard-stat-card--profit {
+  border-color: rgb(167 243 208 / 90%);
+  background: linear-gradient(145deg, #fff 0%, #f0fdf8 100%);
+}
+
+.nice-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .nice-scroll::-webkit-scrollbar {
@@ -63,7 +126,6 @@ input[type="number"] {
    TAMPILAN KHUSUS LAPORAN PDF
 ========================================= */
 
-/* Area laporan tidak tampil pada halaman aplikasi */
 .print-only-report {
   display: none;
 }
@@ -78,21 +140,18 @@ input[type="number"] {
 }
 
 @media print {
+  html,
   body {
     min-height: 0 !important;
     background: #fff !important;
     color: #000 !important;
   }
 
-  /* Sembunyikan semua elemen aplikasi */
   body * {
     visibility: hidden;
   }
 
-  /* =====================================
-     CETAK STRUK - PERTAHANKAN FITUR LAMA
-  ====================================== */
-
+  /* Cetak struk - fitur lama dipertahankan */
   #struk-area,
   #struk-area * {
     visibility: visible;
@@ -108,10 +167,7 @@ input[type="number"] {
     color: #000;
   }
 
-  /* =====================================
-     CETAK LAPORAN LABA RUGI
-  ====================================== */
-
+  /* Cetak laporan laba rugi */
   #laporan-print-area,
   #laporan-print-area * {
     visibility: visible;
@@ -133,31 +189,30 @@ input[type="number"] {
     box-sizing: border-box;
   }
 
-  /* Judul dokumen */
   .print-report-header {
-    text-align: center;
     margin-bottom: 20px;
+    text-align: center;
   }
 
   .print-report-header h1 {
     margin: 0 0 5px;
+    color: #166534 !important;
     font-size: 22px;
     font-weight: 800;
     letter-spacing: 2px;
-    color: #166534 !important;
   }
 
   .print-report-header h2 {
     margin: 0;
+    color: #000 !important;
     font-size: 16px;
     font-weight: 700;
-    color: #000 !important;
   }
 
   .print-report-header p {
     margin: 6px 0 0;
-    font-size: 10px;
     color: #444 !important;
+    font-size: 10px;
   }
 
   .print-report-line {
@@ -165,7 +220,6 @@ input[type="number"] {
     border-bottom: 2px solid #222;
   }
 
-  /* Ringkasan keuangan */
   .print-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -195,15 +249,13 @@ input[type="number"] {
     font-weight: 700;
   }
 
-  /* Judul tabel */
   .print-table-title {
     margin: 0 0 9px;
+    color: #000 !important;
     font-size: 12px;
     font-weight: 700;
-    color: #000 !important;
   }
 
-  /* Tabel laporan */
   .print-report-table {
     width: 100% !important;
     border-collapse: collapse;
@@ -232,7 +284,6 @@ input[type="number"] {
     white-space: nowrap;
   }
 
-  /* Baris total */
   .print-total-row {
     background: #eaeaea !important;
     font-weight: 800;
@@ -249,11 +300,10 @@ input[type="number"] {
     text-align: center;
   }
 
-  /* Catatan perhitungan */
   .print-report-notes {
     margin-top: 20px;
-    padding-top: 10px;
     border-top: 1px solid #aaa;
+    padding-top: 10px;
     color: #222 !important;
     font-size: 9px;
     line-height: 1.5;
@@ -267,31 +317,50 @@ input[type="number"] {
     margin: 4px 0;
   }
 
-  /* Footer dokumen */
   .print-report-footer {
     display: flex;
     justify-content: space-between;
     margin-top: 25px;
-    padding-top: 8px;
     border-top: 1px solid #ccc;
+    padding-top: 8px;
     color: #444 !important;
     font-size: 9px;
   }
 
-  /* Sembunyikan tombol dan filter */
   .no-print {
     display: none !important;
   }
 
-  /* Hindari pemotongan baris tabel */
   .print-report-table tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  /* Pertahankan warna cetak */
   #laporan-print-area {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
