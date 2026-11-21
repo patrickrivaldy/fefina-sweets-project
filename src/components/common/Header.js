@@ -37,11 +37,11 @@ export default function Header({ onMenu }) {
           type="button"
           onClick={onMenu}
           aria-label="Menu"
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
         >
           <Menu size={20} />
         </button>
-        <form onSubmit={go} className="relative w-full max-w-lg flex-1">
+        <form onSubmit={go} className="relative min-w-0 w-full max-w-lg flex-1">
           <Search
             size={17}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -50,13 +50,14 @@ export default function Header({ onMenu }) {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari barcode, SKU, atau produk… (Ctrl+K)"
+            placeholder="Cari barcode, SKU, atau produk…"
+            title="Cari produk (Ctrl+K)"
             aria-label="Cari produk"
-            className="h-10 w-full rounded-lg bg-[#eff4ff] pl-10 pr-4 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/20"
+            className="h-11 w-full min-w-0 rounded-lg bg-[#eff4ff] pl-10 pr-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/20"
           />
         </form>
-        <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <span className="hidden items-center gap-2.5 sm:flex">
+        <div className="ml-auto hidden min-w-0 items-center gap-2 sm:flex sm:gap-3">
+          <span className="flex min-w-0 items-center gap-2.5">
             <span className="text-right leading-tight">
               <span className="block max-w-[140px] truncate text-[13px] font-bold text-slate-900">{nama}</span>
               <span className="block text-[11px] text-slate-500">{role}</span>

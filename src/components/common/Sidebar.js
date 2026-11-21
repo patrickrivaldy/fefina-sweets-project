@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { supabase } from "@/config/supabase";
 import { useRole, bolehBuka } from "@/store/RoleContext";
 import {
@@ -58,7 +59,7 @@ function Item({ m, path, onClose }) {
     <Link
       href={m.href}
       onClick={onClose}
-      className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm transition ${
+      className={`flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 text-sm transition ${
         active
           ? "bg-emerald-700 font-bold text-white shadow-sm"
           : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -76,6 +77,20 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const { role, pengguna } = useRole();
   const main = MAIN.filter((m) => bolehBuka(role, m.href));
   const more = MORE.filter((m) => bolehBuka(role, m.href));
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileOpen, onClose]);
 
   const logout = async () => {
     await supabase.auth.signOut({ scope: "local" });
@@ -118,7 +133,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
         <button
           type="button"
           onClick={logout}
-          className="mt-2 flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600"
+          className="mt-2 flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600"
         >
           <LogOut size={17} /> Keluar
         </button>
@@ -133,14 +148,24 @@ export default function Sidebar({ mobileOpen, onClose }) {
       </aside>
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-slate-950/45" onClick={onClose} />
-          <aside className="absolute inset-y-0 left-0 w-64 bg-white shadow-2xl">
-            <div className="flex justify-end p-2">
+          <button
+            type="button"
+            aria-label="Tutup menu"
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-950/45"
+          />
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu navigasi"
+            className="absolute inset-y-0 left-0 w-[min(18rem,88vw)] bg-white shadow-2xl"
+          >
+            <div className="flex h-14 justify-end p-1.5">
               <button
                 type="button"
                 onClick={onClose}
                 aria-label="Tutup"
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
               >
                 <X size={18} />
               </button>

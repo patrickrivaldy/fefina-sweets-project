@@ -11,7 +11,60 @@ import { usePeriode } from "@/hooks/usePeriode";
 import { useRole } from "@/store/RoleContext";
 import { ReceiptText, Search, Download, Printer, X } from "lucide-react";
 
-  
+
+const PAGE_SIZE = 1000;
+
+function buildTransaksiQuery(from, to) {
+  let query = supabase
+    .from("transaksi_penjualan")
+    .select(`id_transaksi, tanggal_transaksi, total_pembayaran, diskon, metode_pembayaran, status_transaksi,
+      detail_transaksi (jumlah_beli, subtotal, produk (nama_produk))`)
+    .order("tanggal_transaksi", { ascending: false })
+    .order("id_transaksi", { ascending: false });
+
+  if (from && to && from <= to) {
+    const a = wibDayBounds(from);
+    const b = wibDayBounds(to);
+    query = query.gte("tanggal_transaksi", a.gte).lte("tanggal_transaksi", b.lte);
+  }
+
+  return query;
+}
+
+async function fetchAllTransaksi(from, to) {
+  const all = [];
+
+  for (let start = 0; ; start += PAGE_SIZE) {
+    const { data, error } = await buildTransaksiQuery(from, to).range(
+      start,
+      start + PAGE_SIZE - 1
+    );
+
+    if (error) throw error;
+
+    const page = data || [];
+    all.push(...page);
+
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  return all;
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function printWithTarget(target) {
+  document.body.dataset.printTarget = target;
+  const cleanup = () => {
+    delete document.body.dataset.printTarget;
+  };
+
+  window.addEventListener("afterprint", cleanup, { once: true });
+  window.print();
+}
+
 export default function TransaksiPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +76,7 @@ export default function TransaksiPage() {
   const [batas, setBatas] = useState(300);
   const [totalSemua, setTotalSemua] = useState(null);
   const [voidBusy, setVoidBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Rentang tanggal difilter di server (batas WIB → UTC); pencarian ID tetap di browser.
   useEffect(() => {
@@ -30,17 +84,7 @@ export default function TransaksiPage() {
       setLoading(true);
       setError("");
       setRangeErr(from && to && from > to ? "Tanggal mulai lebih besar dari tanggal akhir." : "");
-      let query = supabase
-        .from("transaksi_penjualan")
-        .select(`id_transaksi, tanggal_transaksi, total_pembayaran, diskon, metode_pembayaran, status_transaksi,
-          detail_transaksi (jumlah_beli, subtotal, produk (nama_produk))`)
-        .order("tanggal_transaksi", { ascending: false })
-        .limit(batas);
-      if (from && to && from <= to) {
-        const a = wibDayBounds(from);
-        const b = wibDayBounds(to);
-        query = query.gte("tanggal_transaksi", a.gte).lte("tanggal_transaksi", b.lte);
-      }
+      const query = buildTransaksiQuery(from, to).range(0, batas - 1);
       const [{ data, error }, count] = await Promise.all([
         query,
         (async () => {
@@ -109,42 +153,113 @@ export default function TransaksiPage() {
     0
   );
 
-  const csv = () => {
-    const head = "ID;Tanggal;Metode;Item;Total;Diskon\n";
-    const lines = filtered.map((r) =>
-      [
-        r.id_transaksi,
-        new Date(r.tanggal_transaksi).toLocaleString("id-ID"),
-        `"${(r.metode_pembayaran || "").replace(/"/g, "")}"`,
-        (r.detail_transaksi || []).reduce((a, d) => a + (+d.jumlah_beli || 0), 0),
-        r.total_pembayaran,
-        r.diskon || 0,
-      ].join(";")
-    );
-    const blob = new Blob(["\uFEFF" + head + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `riwayat-${from || "semua"}-${to || "semua"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const csv = async () => {
+    if (exporting || rangeErr) return;
+
+    setExporting(true);
+    try {
+      // Ambil seluruh transaksi pada periode, bukan hanya nota yang sudah dimuat di tabel.
+      const allRows = await fetchAllTransaksi(from, to);
+      const keyword = q.trim().toLowerCase();
+      const exportRows = keyword
+        ? allRows.filter((r) =>
+            String(r.id_transaksi || "").toLowerCase().includes(keyword) ||
+            String(r.metode_pembayaran || "").toLowerCase().includes(keyword) ||
+            String(r.total_pembayaran ?? "").includes(keyword)
+          )
+        : allRows;
+
+      if (!exportRows.length) {
+        window.alert("Tidak ada transaksi yang sesuai untuk diekspor.");
+        return;
+      }
+
+      const header = [
+        "ID Transaksi",
+        "Tanggal",
+        "Metode Pembayaran",
+        "Tipe Penjualan",
+        "Jumlah Item",
+        "Daftar Produk",
+        "Subtotal",
+        "Biaya Platform",
+        "Diskon",
+        "Total Pembayaran",
+        "Status",
+      ];
+
+      const rowsCsv = exportRows.map((r) => {
+        const items = r.detail_transaksi || [];
+        const subtotal = items.reduce((sum, item) => sum + (+item.subtotal || 0), 0);
+        const diskonValue = +r.diskon || 0;
+        const totalValue = +r.total_pembayaran || 0;
+        const biayaPlatform = Math.max(0, totalValue - subtotal + diskonValue);
+        const metodeRaw = r.metode_pembayaran || "";
+        const match = metodeRaw.match(/^(.*?)\s*\((.*?)\)\s*$/);
+
+        return [
+          r.id_transaksi,
+          r.tanggal_transaksi ? new Date(r.tanggal_transaksi).toLocaleString("id-ID") : "",
+          match?.[1]?.trim() || metodeRaw,
+          match?.[2]?.trim() || "Tidak tercatat",
+          items.reduce((sum, item) => sum + (+item.jumlah_beli || 0), 0),
+          items.map((item) => `${item.produk?.nama_produk || "Produk"} x${item.jumlah_beli}`).join(" | "),
+          subtotal,
+          biayaPlatform,
+          diskonValue,
+          totalValue,
+          r.status_transaksi || "Selesai",
+        ];
+      });
+
+      const content = [header, ...rowsCsv]
+        .map((row) => row.map(csvCell).join(";"))
+        .join("\r\n");
+
+      const blob = new Blob(["\uFEFF" + content], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `riwayat-transaksi-${from || "awal"}-${to || "akhir"}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      window.alert("Gagal mengekspor transaksi: " + (e.message || "Terjadi kesalahan."));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toStruk = (r) => {
     const items = (r.detail_transaksi || []).map((d) => ({
       nama_produk: d.produk?.nama_produk || "Produk",
-      qty: d.jumlah_beli,
-      harga_jual: d.jumlah_beli > 0 ? Math.round(d.subtotal / d.jumlah_beli) : 0,
-      subtotal: d.subtotal,
+      qty: +d.jumlah_beli || 0,
+      harga_jual: d.jumlah_beli > 0 ? Math.round((+d.subtotal || 0) / d.jumlah_beli) : 0,
+      subtotal: +d.subtotal || 0,
     }));
-    const sub = items.reduce((s, i) => s + i.subtotal, 0);
-    const dis = +r.diskon || 0;
+    const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const diskonValue = +r.diskon || 0;
+    const total = +r.total_pembayaran || 0;
+    const metodeRaw = r.metode_pembayaran || "";
+    const match = metodeRaw.match(/^(.*?)\s*\((.*?)\)\s*$/);
+
     return {
-      id_transaksi: r.id_transaksi, tanggal: r.tanggal_transaksi, items, subtotal: sub,
-      biayaPlatform: Math.max(0, (+r.total_pembayaran || 0) - sub + dis),
-      tipePenjualan: "-", diskon: dis, total: +r.total_pembayaran || 0,
-      metode: (r.metode_pembayaran || "").split("(")[0].trim() || "Tunai",
-      uang: +r.total_pembayaran || 0, kembalian: 0,
+      id_transaksi: r.id_transaksi,
+      tanggal: r.tanggal_transaksi,
+      items,
+      subtotal,
+      biayaPlatform: Math.max(0, total - subtotal + diskonValue),
+      tipePenjualan: match?.[2]?.trim() || "Tidak tercatat",
+      diskon: diskonValue,
+      total,
+      metode: match?.[1]?.trim() || metodeRaw || "-",
+      // Riwayat lama tidak menyimpan nominal uang diterima/kembalian.
+      tampilkanPembayaran: false,
+      statusTransaksi: r.status_transaksi || "Selesai",
     };
   };
 
@@ -163,8 +278,8 @@ export default function TransaksiPage() {
               {filtered.length} nota • {pcs} pcs • omset {formatRupiah(omset)}
             </p>
           </div>
-          <button type="button" onClick={csv} disabled={!filtered.length} className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40">
-            <Download size={16} /> Unduh CSV
+          <button type="button" onClick={csv} disabled={loading || exporting || !!rangeErr || totalSemua === 0} className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40">
+            <Download size={16} /> {exporting ? "Mengunduh…" : "Unduh CSV"}
           </button>
         </div>
 
@@ -260,7 +375,7 @@ export default function TransaksiPage() {
             </div>
             <div className="mt-3"><StrukNota data={toStruk(detail)} /></div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => window.print()} className="flex h-12 items-center justify-center gap-2 rounded-lg bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+              <button type="button" onClick={() => printWithTarget("receipt")} className="flex h-12 items-center justify-center gap-2 rounded-lg bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
                 <Printer size={15} /> Cetak Ulang
               </button>
               {detail.status_transaksi === "Dibatalkan" ? (

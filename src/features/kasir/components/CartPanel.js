@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/store/CartContext";
 import { supabase } from "@/config/supabase";
 import { formatRupiah, generateIdTransaksi } from "@/utils/format";
@@ -18,6 +18,8 @@ import {
   QrCode,
   Landmark,
   Receipt,
+  ShoppingCart,
+  ChevronUp,
 } from "lucide-react";
 
 const TIPE = [
@@ -33,6 +35,16 @@ const METODE = [
 ];
 
 const HOLD_KEY = "fefina-holds";
+
+function printWithTarget(target) {
+  document.body.dataset.printTarget = target;
+  const cleanup = () => {
+    delete document.body.dataset.printTarget;
+  };
+
+  window.addEventListener("afterprint", cleanup, { once: true });
+  window.print();
+}
 
 // Gambar QRIS toko (simpan file di public/qris.png). Kalau belum ada,
 // tampil kotak petunjuk agar kasir tahu harus pasang gambar.
@@ -76,6 +88,21 @@ export default function CartPanel({ onPaid }) {
     }
   });
   const [showHolds, setShowHolds] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileOpen]);
 
   const persistHolds = (h) => {
     setHolds(h);
@@ -104,6 +131,7 @@ export default function CartPanel({ onPaid }) {
     clearCart();
     setUang("");
     setDiskon("");
+    setMobileOpen(false);
   };
 
   const restoreHold = (h) => {
@@ -116,6 +144,7 @@ export default function CartPanel({ onPaid }) {
     }, 0);
     persistHolds(holds.filter((x) => x.id !== h.id));
     setShowHolds(false);
+    setMobileOpen(false);
   };
 
   const bayar = async () => {
@@ -184,6 +213,9 @@ export default function CartPanel({ onPaid }) {
       clearCart();
       setUang("");
       setDiskon("");
+      if (window.matchMedia("(max-width: 1279px)").matches) {
+        setMobileOpen(true);
+      }
       if (onPaid) onPaid();
     } catch (e) {
       const msg = e.message || "Pembayaran gagal.";
@@ -195,14 +227,13 @@ export default function CartPanel({ onPaid }) {
     }
   };
 
-  if (struk) {
-    return (
-      <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+  const receiptPanel = struk ? (
+      <div className="w-full min-w-0 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 sm:p-4">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">
           Pembayaran berhasil
         </p>
         <p className="tnum mt-1 font-mono text-xs font-bold">{struk.id_transaksi}</p>
-        <p className="tnum mt-1 text-3xl font-bold text-emerald-700">
+        <p className="tnum mt-1 break-words text-2xl font-bold text-emerald-700 sm:text-3xl">
           {formatRupiah(struk.total)}
         </p>
         {struk.kembalian > 0 && (
@@ -213,31 +244,27 @@ export default function CartPanel({ onPaid }) {
         <div className="mt-3">
           <StrukNota data={struk} />
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => printWithTarget("receipt")}
             className="flex h-12 items-center justify-center gap-2 rounded-lg bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
           >
             <Printer size={16} /> Cetak Struk
           </button>
           <button
             type="button"
-            onClick={() => setStruk(null)}
+            onClick={() => { setStruk(null); setMobileOpen(false); }}
             className="h-12 rounded-lg bg-emerald-700 text-sm font-bold text-white hover:bg-emerald-800"
           >
             Selesai — Transaksi Baru
           </button>
         </div>
-        <div className="hidden print:block">
-          <StrukNota data={struk} />
-        </div>
       </div>
-    );
-  }
+  ) : null;
 
-  return (
-    <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+  const cartPanel = (
+    <div className="w-full min-w-0 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200/70 sm:p-4">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
         Pesanan Aktif
       </p>
@@ -247,7 +274,7 @@ export default function CartPanel({ onPaid }) {
           <button
             type="button"
             onClick={() => setShowHolds(!showHolds)}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-[#eff4ff] px-3 text-xs font-bold text-slate-600 hover:bg-slate-200"
+            className="flex min-h-10 items-center gap-1.5 rounded-lg bg-[#eff4ff] px-3 text-xs font-bold text-slate-600 hover:bg-slate-200"
             title="Tahan / ambil pesanan"
           >
             <Pause size={13} /> Hold{holds.length > 0 && ` (${holds.length})`}
@@ -261,7 +288,7 @@ export default function CartPanel({ onPaid }) {
                 setDiskon("");
               }
             }}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-red-50 px-3 text-xs font-bold text-red-600 hover:bg-red-100"
+            className="flex min-h-10 items-center gap-1.5 rounded-lg bg-red-50 px-3 text-xs font-bold text-red-600 hover:bg-red-100"
           >
             <RotateCcw size={13} /> Reset
           </button>
@@ -289,14 +316,14 @@ export default function CartPanel({ onPaid }) {
                   <button
                     type="button"
                     onClick={() => restoreHold(h)}
-                    className="rounded-md bg-emerald-700 px-2.5 py-1 font-bold text-white"
+                    className="min-h-10 rounded-md bg-emerald-700 px-3 py-2 font-bold text-white"
                   >
                     Ambil
                   </button>
                   <button
                     type="button"
                     onClick={() => persistHolds(holds.filter((x) => x.id !== h.id))}
-                    className="rounded-md px-1.5 py-1 text-slate-400 hover:text-red-600"
+                    className="flex h-10 w-10 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
                     aria-label="Hapus hold"
                   >
                     <X size={14} />
@@ -308,7 +335,7 @@ export default function CartPanel({ onPaid }) {
         </div>
       )}
 
-      <div className="nice-scroll mt-3 max-h-[300px] space-y-2 overflow-y-auto">
+      <div className="nice-scroll mt-3 max-h-[min(34dvh,300px)] space-y-2 overflow-y-auto overscroll-contain xl:max-h-[300px]">
         {cartItems.length === 0 ? (
           <div className="rounded-lg bg-[#eff4ff] p-5 text-center">
             <Receipt size={22} className="mx-auto text-slate-300" />
@@ -324,7 +351,7 @@ export default function CartPanel({ onPaid }) {
             const sub = it.harga_jual * it.qty;
             const max = it.qty >= it.stok;
             return (
-              <div key={it.id_produk} className="rounded-lg bg-[#eff4ff] p-3">
+              <div key={it.id_produk} className="min-w-0 rounded-lg bg-[#eff4ff] p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate text-[13px] font-bold">
                     {it.nama_produk}
@@ -333,26 +360,26 @@ export default function CartPanel({ onPaid }) {
                     type="button"
                     onClick={() => removeFromCart(it.id_produk)}
                     aria-label="Hapus"
-                    className="text-slate-400 hover:text-red-600"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
                   >
-                    <X size={15} />
+                    <X size={17} />
                   </button>
                 </div>
                 <p className="tnum mt-0.5 text-xs text-slate-500">
                   Rp {it.harga_jual.toLocaleString("id-ID")} /pcs
                 </p>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="flex items-center gap-2 rounded-lg bg-white px-1.5 py-1 ring-1 ring-slate-200">
+                  <span className="flex min-h-11 items-center gap-1 rounded-lg bg-white px-1.5 py-1 ring-1 ring-slate-200">
                     <button
                       type="button"
                       aria-label="Kurangi"
                       disabled={it.qty <= 1}
                       onClick={() => updateQuantity(it.id_produk, it.qty - 1)}
-                      className="rounded-md p-1 hover:bg-slate-100 disabled:opacity-30"
+                      className="flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100 disabled:opacity-30"
                     >
                       <Minus size={13} />
                     </button>
-                    <span className="tnum w-5 text-center text-[13px] font-bold">
+                    <span className="tnum w-7 text-center text-[13px] font-bold">
                       {it.qty}
                     </span>
                     <button
@@ -361,12 +388,12 @@ export default function CartPanel({ onPaid }) {
                       disabled={max}
                       title={max ? `Mentok (${it.stok})` : "Tambah"}
                       onClick={() => updateQuantity(it.id_produk, it.qty + 1)}
-                      className="rounded-md p-1 hover:bg-slate-100 disabled:opacity-30"
+                      className="flex h-10 w-10 items-center justify-center rounded-md hover:bg-slate-100 disabled:opacity-30"
                     >
                       <Plus size={13} />
                     </button>
                   </span>
-                  <span className="tnum text-sm font-bold">
+                  <span className="tnum min-w-0 text-right text-sm font-bold">
                     Rp{sub.toLocaleString("id-ID")}
                   </span>
                 </div>
@@ -388,7 +415,7 @@ export default function CartPanel({ onPaid }) {
               value={diskon}
               onChange={setDiskon}
               placeholder="0"
-              className="tnum h-9 w-28 rounded-lg bg-[#eff4ff] px-2.5 text-right text-sm font-bold outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/25"
+              className="tnum h-10 w-28 rounded-lg bg-[#eff4ff] px-2.5 text-right text-base font-bold outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/25"
             />
           </span>
         </div>
@@ -401,8 +428,8 @@ export default function CartPanel({ onPaid }) {
       </div>
 
       <div className="mt-2.5 rounded-xl bg-emerald-50/70 p-3.5 ring-1 ring-emerald-100">
-        <div className="flex items-start justify-between gap-2">
-          <div>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2 sm:flex-nowrap">
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Total Pembayaran
             </p>
@@ -410,7 +437,7 @@ export default function CartPanel({ onPaid }) {
               Sudah termasuk {tipe === "Langsung" ? "tanpa biaya platform" : "biaya platform 25%"}
             </p>
           </div>
-          <p className="tnum text-right text-[32px] font-bold leading-10 tracking-tight text-emerald-700">
+          <p className="tnum min-w-0 max-w-full break-words text-right text-[clamp(1.2rem,5vw,2rem)] font-bold leading-tight tracking-tight text-emerald-700">
             {formatRupiah(total).replace("Rp", "Rp ")}
           </p>
         </div>
@@ -446,7 +473,7 @@ export default function CartPanel({ onPaid }) {
             key={t.value}
             type="button"
             onClick={() => setTipe(t.value)}
-              className={`h-9 rounded-lg text-[11px] font-bold transition ${
+              className={`min-h-11 rounded-lg px-1.5 text-[11px] font-bold transition ${
                 tipe === t.value
                   ? "bg-emerald-700 text-white shadow-sm"
                   : "bg-slate-100 text-slate-500 hover:bg-slate-200"
@@ -465,20 +492,20 @@ export default function CartPanel({ onPaid }) {
               <button
                 type="button"
                 onClick={() => setUang(String(Math.ceil(total / 50000) * 50000))}
-                className="rounded-md bg-[#eff4ff] px-2 py-1 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
+                className="min-h-10 rounded-md bg-[#eff4ff] px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
               >
                 Pas Rp {Math.ceil(total / 50000) * 50000 > 0 ? `${Math.ceil(total / 1000)}rb` : ""}
               </button>
               <button
                 type="button"
                 onClick={() => setUang(String(total))}
-                className="rounded-md bg-[#eff4ff] px-2 py-1 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
+                className="min-h-10 rounded-md bg-[#eff4ff] px-3 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
               >
                 Uang Pas
               </button>
             </div>
           </div>
-          <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-[#eff4ff] px-3.5 py-3">
+          <div className="mt-1.5 flex min-h-12 items-center gap-2 rounded-lg bg-[#eff4ff] px-3.5 py-3">
             <span className="text-sm font-bold text-slate-500">Rp</span>
             <RupiahInput
               value={uang}
@@ -542,11 +569,73 @@ export default function CartPanel({ onPaid }) {
         onClick={hold}
         disabled={!cartItems.length || busy}
         title="Tahan keranjang ini (misal pelanggan ke ATM dulu), ambil lagi lewat tombol Hold di atas"
-        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#eff4ff] text-[13px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+        className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#eff4ff] text-[13px] font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
       >
         Simpan Pesanan / Hold Bill
       </button>
       <p className="mt-1.5 text-center text-[11px] text-slate-400">Hold = tahan pesanan belum bayar, bisa dilanjut nanti.</p>
     </div>
+  );
+
+  return (
+    <>
+      <div className="hidden min-w-0 xl:block">{struk ? receiptPanel : cartPanel}</div>
+
+      <div className="xl:hidden">
+        {!mobileOpen && (struk || cartItems.length > 0 || holds.length > 0) && (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.10)] backdrop-blur-xl pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label={struk ? "Lihat struk transaksi" : "Buka keranjang kasir"}
+              className="flex min-h-12 w-full items-center justify-between gap-3 rounded-xl bg-emerald-700 px-4 py-2.5 text-left text-white shadow-sm active:bg-emerald-800"
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <ShoppingCart size={20} className="shrink-0" />
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-emerald-100">
+                    {struk ? "Pembayaran berhasil" : cartItems.length ? `Keranjang aktif · ${count} item` : `Pesanan ditahan · ${holds.length}`}
+                  </span>
+                  <span className="block truncate text-sm font-bold">
+                    {struk ? "Lihat struk transaksi" : cartItems.length ? formatRupiah(total) : "Buka keranjang"}
+                  </span>
+                </span>
+              </span>
+              <ChevronUp size={20} className="shrink-0" />
+            </button>
+          </div>
+        )}
+
+        {mobileOpen && (
+          <div className="fixed inset-0 z-[70] xl:hidden">
+            <button
+              type="button"
+              aria-label="Tutup keranjang"
+              onClick={() => setMobileOpen(false)}
+              className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+            />
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-label={struk ? "Struk pembayaran" : "Keranjang kasir"}
+              className="absolute inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto overscroll-contain rounded-t-3xl bg-slate-50 px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-2 shadow-2xl"
+            >
+              <div className="sticky top-0 z-10 mb-2 flex items-center justify-between bg-slate-50/95 pb-2 pt-1 backdrop-blur">
+                <span className="mx-auto h-1.5 w-12 rounded-full bg-slate-300" />
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Tutup keranjang"
+                  className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm ring-1 ring-slate-200"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              {struk ? receiptPanel : cartPanel}
+            </section>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

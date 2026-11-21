@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,12 +15,45 @@ import {
   Factory,
 } from "lucide-react";
 
+
+const PAGE_SIZE = 1000;
+
+async function fetchAllPages(buildQuery) {
+  const all = [];
+
+  for (let start = 0; ; start += PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(start, start + PAGE_SIZE - 1);
+    if (error) throw error;
+
+    const page = data || [];
+    all.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  return all;
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function printWithTarget(target) {
+  document.body.dataset.printTarget = target;
+  const cleanup = () => {
+    delete document.body.dataset.printTarget;
+  };
+
+  window.addEventListener("afterprint", cleanup, { once: true });
+  window.print();
+}
+
 export default function LaporanPage() {
   const [trx, setTrx] = useState([]);
   const [exp, setExp] = useState([]);
   const [kns, setKns] = useState([]);
   const [modalMap, setModalMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const {
     preset,
@@ -40,75 +72,103 @@ export default function LaporanPage() {
   // tanggal laku belum dicatat di database.
   // HPP konsinyasi menggunakan estimasi modal aktual x pcs laku.
   useEffect(() => {
+    let aktif = true;
+
     const load = async () => {
       setLoading(true);
+      setError("");
 
-      setRangeErr(
-        from && to && from > to
-          ? "Tanggal mulai lebih besar dari tanggal akhir."
-          : ""
-      );
-
-      const baseT = supabase
-        .from("transaksi_penjualan")
-        .select(
-          "tanggal_transaksi, total_pembayaran, status_transaksi, detail_transaksi(jumlah_beli, hpp_satuan)"
-        )
-        .neq("status_transaksi", "Dibatalkan")
-        .order("tanggal_transaksi", { ascending: true })
-        .limit(500);
-
-      const baseE = supabase
-        .from("pengeluaran_toko")
-        .select("tanggal, nominal")
-        .order("tanggal", { ascending: true })
-        .limit(500);
-
-      const baseK = supabase
-        .from("nota_konsinyasi")
-        .select(
-          "id_konsinyasi, tanggal_titip, total_tagihan, detail_konsinyasi(jumlah_laku, id_produk)"
-        )
-        .order("tanggal_titip", { ascending: true })
-        .limit(500);
-
-      let tq = baseT;
-      let eq = baseE;
-      let kq = baseK;
-
-      if (from && to && from <= to) {
-        const a = wibDayBounds(from);
-        const b = wibDayBounds(to);
-
-        tq = baseT
-          .gte("tanggal_transaksi", a.gte)
-          .lte("tanggal_transaksi", b.lte);
-
-        eq = baseE
-          .gte("tanggal", a.gte)
-          .lte("tanggal", b.lte);
-
-        kq = baseK
-          .gte("tanggal_titip", a.gte)
-          .lte("tanggal_titip", b.lte);
+      if (from && to && from > to) {
+        setRangeErr("Tanggal mulai lebih besar dari tanggal akhir.");
+        setTrx([]);
+        setExp([]);
+        setKns([]);
+        setLoading(false);
+        return;
       }
 
-      const [t, e, k, mmap] = await Promise.all([
-        tq,
-        eq,
-        kq,
-        fetchModalMap(),
-      ]);
+      setRangeErr("");
 
-      setTrx(t.data || []);
-      setExp(e.data || []);
-      setKns(k.data || []);
-      setModalMap(mmap);
-      setLoading(false);
+      const buildT = () => {
+        let query = supabase
+          .from("transaksi_penjualan")
+          .select(
+            "tanggal_transaksi, total_pembayaran, status_transaksi, detail_transaksi(jumlah_beli, hpp_satuan)"
+          )
+          .neq("status_transaksi", "Dibatalkan")
+          .order("tanggal_transaksi", { ascending: true });
+
+        if (from && to) {
+          const a = wibDayBounds(from);
+          const b = wibDayBounds(to);
+          query = query.gte("tanggal_transaksi", a.gte).lte("tanggal_transaksi", b.lte);
+        }
+
+        return query;
+      };
+
+      const buildE = () => {
+        let query = supabase
+          .from("pengeluaran_toko")
+          .select("tanggal, nominal")
+          .order("tanggal", { ascending: true });
+
+        if (from && to) {
+          const a = wibDayBounds(from);
+          const b = wibDayBounds(to);
+          query = query.gte("tanggal", a.gte).lte("tanggal", b.lte);
+        }
+
+        return query;
+      };
+
+      const buildK = () => {
+        let query = supabase
+          .from("nota_konsinyasi")
+          .select(
+            "id_konsinyasi, tanggal_titip, total_tagihan, detail_konsinyasi(jumlah_laku, id_produk)"
+          )
+          .order("tanggal_titip", { ascending: true });
+
+        if (from && to) {
+          const a = wibDayBounds(from);
+          const b = wibDayBounds(to);
+          query = query.gte("tanggal_titip", a.gte).lte("tanggal_titip", b.lte);
+        }
+
+        return query;
+      };
+
+      try {
+        // Pagination memastikan data laporan tidak terpotong pada batas 500/1000 baris.
+        const [t, e, k, mmap] = await Promise.all([
+          fetchAllPages(buildT),
+          fetchAllPages(buildE),
+          fetchAllPages(buildK),
+          fetchModalMap(),
+        ]);
+
+        if (!aktif) return;
+        setTrx(t);
+        setExp(e);
+        setKns(k);
+        setModalMap(mmap || {});
+      } catch (e) {
+        if (!aktif) return;
+        setError("Gagal memuat data laporan: " + (e.message || "Terjadi kesalahan."));
+        setTrx([]);
+        setExp([]);
+        setKns([]);
+      } finally {
+        if (aktif) setLoading(false);
+      }
     };
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+
+    return () => {
+      aktif = false;
+    };
   }, [from, to]);
 
   // Rekap laba rugi harian.
@@ -205,40 +265,56 @@ export default function LaporanPage() {
   const totN = rekap.reduce((s, r) => s + r.n, 0);
   const totNK = rekap.reduce((s, r) => s + r.nk, 0);
 
-  // Ekspor arsip CSV yang dapat dibuka menggunakan Excel.
+  // CSV memakai seluruh rekap yang sama dengan tabel halaman dan dokumen cetak.
   const csv = () => {
-    const head =
-      "Tanggal;Transaksi;Nota Konsinyasi;Omset;HPP;Operasional;Laba\n";
+    if (loading || rangeErr || !rekap.length) return;
 
-    const lines = rekap.map((r) =>
-      [
-        r.tanggal,
-        r.n,
-        r.nk,
-        r.omset,
-        Math.round(r.hpp),
-        r.keluar,
-        Math.round(r.laba),
-      ].join(";")
-    );
+    const header = [
+      "Tanggal",
+      "Transaksi",
+      "Nota Konsinyasi",
+      "Omset",
+      "HPP",
+      "Operasional",
+      "Laba",
+    ];
 
-    lines.push(
-      `TOTAL;${totN};${totNK};${totO};${Math.round(totH)};${totK};${Math.round(totL)}`
-    );
+    const dataRows = rekap.map((r) => [
+      r.tanggal,
+      r.n,
+      r.nk,
+      r.omset,
+      Math.round(r.hpp),
+      r.keluar,
+      Math.round(r.laba),
+    ]);
 
-    const blob = new Blob(
-      ["\uFEFF" + head + lines.join("\n")],
-      { type: "text/csv;charset=utf-8;" }
-    );
+    dataRows.push([
+      "TOTAL",
+      totN,
+      totNK,
+      totO,
+      Math.round(totH),
+      totK,
+      Math.round(totL),
+    ]);
 
+    const content = [header, ...dataRows]
+      .map((row) => row.map(csvCell).join(";"))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + content], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
 
     a.href = url;
-    a.download = `laporan-${from}-${to}.csv`;
+    a.download = `laporan-laba-rugi-${from || "awal"}-${to || "akhir"}.csv`;
+    document.body.appendChild(a);
     a.click();
-
-    URL.revokeObjectURL(url);
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const tanggalCetak = new Date().toLocaleDateString(
@@ -290,7 +366,7 @@ export default function LaporanPage() {
             <button
               type="button"
               onClick={csv}
-              disabled={!rekap.length}
+              disabled={loading || !!rangeErr || !!error || !rekap.length}
               className="flex h-12 items-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 disabled:opacity-40"
             >
               <Download size={16} />
@@ -299,7 +375,8 @@ export default function LaporanPage() {
 
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() => printWithTarget("report")}
+              disabled={loading || !!rangeErr || !!error}
               className="no-print flex h-12 items-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"
             >
               <Printer size={16} />
@@ -350,6 +427,11 @@ export default function LaporanPage() {
           {rangeErr && (
             <p className="mt-2 rounded-lg bg-red-50 p-2.5 text-xs font-bold text-red-600">
               {rangeErr}
+            </p>
+          )}
+          {error && (
+            <p className="mt-2 rounded-lg bg-red-50 p-2.5 text-xs font-bold text-red-600">
+              {error}
             </p>
           )}
         </div>

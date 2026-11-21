@@ -4,6 +4,7 @@ import { formatRupiah, formatTanggal } from "@/utils/format";
 
 export default function StrukNota({ data }) {
   if (!data) return null;
+
   const {
     id_transaksi,
     tanggal,
@@ -16,7 +17,11 @@ export default function StrukNota({ data }) {
     metode,
     uang,
     kembalian,
+    tampilkanPembayaran = true,
+    statusTransaksi = "Selesai",
   } = data;
+
+  const dibatalkan = statusTransaksi === "Dibatalkan";
 
   return (
     <div id="struk-area" className="bg-white text-stone-900">
@@ -26,57 +31,75 @@ export default function StrukNota({ data }) {
           <p className="mt-0.5 text-[11px] text-stone-500">Manisan Buah Kering</p>
           <p className="mt-2 font-mono text-[11px] font-bold">{id_transaksi}</p>
           <p className="text-[11px] text-stone-500">
-            {formatTanggal(tanggal, true)} · {tipePenjualan} · {metode}
+            {formatTanggal(tanggal, true)} · {tipePenjualan || "-"} · {metode || "-"}
           </p>
+          {dibatalkan && (
+            <p className="mt-2 border-y border-red-500 py-1 text-[11px] font-extrabold text-red-700">
+              TRANSAKSI DIBATALKAN
+            </p>
+          )}
         </div>
+
         <div className="my-3 border-t border-dashed border-stone-300" />
+
         <div className="space-y-2">
           {items.map((it, i) => (
-            <div key={i} className="flex justify-between gap-3 text-xs">
+            <div key={`${it.nama_produk}-${i}`} className="flex justify-between gap-3 text-xs">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold">{it.nama_produk}</p>
+                <p className="break-words font-bold">{it.nama_produk}</p>
                 <p className="text-stone-500">
                   {it.qty} × {formatRupiah(it.harga_jual)}
                 </p>
               </div>
-              <p className="font-bold tabular-nums">{formatRupiah(it.subtotal)}</p>
+              <p className="shrink-0 font-bold tabular-nums">{formatRupiah(it.subtotal)}</p>
             </div>
           ))}
         </div>
+
         <div className="my-3 border-t border-dashed border-stone-300" />
+
         <dl className="space-y-1 text-xs tabular-nums">
           <div className="flex justify-between">
             <dt className="text-stone-500">Subtotal</dt>
             <dd className="font-semibold">{formatRupiah(subtotal)}</dd>
           </div>
+
           {biayaPlatform > 0 && (
             <div className="flex justify-between">
-              <dt className="text-stone-500">Platform 25%</dt>
+              <dt className="text-stone-500">Platform</dt>
               <dd className="font-semibold">{formatRupiah(biayaPlatform)}</dd>
             </div>
           )}
+
           {diskon > 0 && (
             <div className="flex justify-between">
               <dt className="text-stone-500">Diskon</dt>
               <dd className="font-semibold">−{formatRupiah(diskon)}</dd>
             </div>
           )}
+
           <div className="flex justify-between pt-1 text-sm font-extrabold">
             <dt>Total</dt>
             <dd>{formatRupiah(total)}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-stone-500">Bayar</dt>
-            <dd>{formatRupiah(uang)}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-stone-500">Kembali</dt>
-            <dd>{formatRupiah(kembalian)}</dd>
-          </div>
+
+          {tampilkanPembayaran && uang !== undefined && uang !== null && (
+            <>
+              <div className="flex justify-between">
+                <dt className="text-stone-500">Bayar</dt>
+                <dd>{formatRupiah(uang)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-stone-500">Kembali</dt>
+                <dd>{formatRupiah(kembalian || 0)}</dd>
+              </div>
+            </>
+          )}
         </dl>
+
         <div className="my-3 border-t border-dashed border-stone-300" />
         <p className="text-center text-[11px] text-stone-500">
-          Terima kasih sudah berbelanja.
+          {dibatalkan ? "Nota ini telah dibatalkan." : "Terima kasih sudah berbelanja."}
         </p>
       </div>
     </div>

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "@/config/supabase";
 import { formatRupiah, randomId } from "@/utils/format";
-import { compressImage } from "@/utils/image";
+import { compressImage, formatFileSize } from "@/utils/image";
 import RupiahInput from "@/components/ui/RupiahInput";
 import { X, ImagePlus, Trash2, Check } from "lucide-react";
 
@@ -20,6 +20,7 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, submitting,
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [compressing, setCompressing] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState("");
   const fileRef = useRef(null);
 
   if (!isOpen) return null;
@@ -33,20 +34,20 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, submitting,
   };
 
   const pickImage = async (e) => {
-    const f = e.target.files?.[0];
+    const inputEl = e.currentTarget;
+    const f = inputEl.files?.[0];
+    // Memungkinkan pengguna memilih ulang file yang sama setelahnya.
+    inputEl.value = "";
     if (!f) return;
-    if (!f.type.startsWith("image/")) {
-      setFormError("File harus berupa gambar.");
-      return;
-    }
+
     setCompressing(true);
     setFormError("");
     try {
-      // Kecilkan dulu biar upload cepat & kasir tidak lemot
       const small = await compressImage(f);
       if (preview) URL.revokeObjectURL(preview);
       setImageFile(small);
       setPreview(URL.createObjectURL(small));
+      setCompressionInfo(`${formatFileSize(f.size)} → ${formatFileSize(small.size)}`);
     } catch (err) {
       setFormError(err.message || "Gagal memproses gambar.");
     } finally {
@@ -59,6 +60,7 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, submitting,
     setImageFile(null);
     if (preview) URL.revokeObjectURL(preview);
     setPreview("");
+    setCompressionInfo("");
     setFormError("");
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -150,15 +152,18 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, submitting,
                   <span className="block text-[13px] font-bold text-slate-700">
                     {preview ? "Ganti foto" : "Pilih atau Seret Foto Produk"}
                   </span>
-                  <span className="block text-[11px] text-slate-500">JPG/PNG max 2MB (rasio 1:1 disarankan)</span>
+                  <span className="block text-[11px] text-slate-500">JPG, PNG, atau WEBP. Otomatis dikompres sebelum upload.</span>
                 </span>
               </button>
-              <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} className="hidden" />
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={pickImage} disabled={submitting || compressing} className="hidden" />
               {compressing && (
                 <p className="mt-2 text-xs font-bold text-emerald-700">Mengecilkan foto…</p>
               )}
+              {compressionInfo && !compressing && (
+                <p className="mt-1 text-[11px] font-medium text-emerald-700">Ukuran foto: {compressionInfo}</p>
+              )}
               {preview && (
-                <button type="button" onClick={() => { setImageFile(null); URL.revokeObjectURL(preview); setPreview(""); if (fileRef.current) fileRef.current.value = ""; }} className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600">
+                <button type="button" onClick={() => { setImageFile(null); URL.revokeObjectURL(preview); setPreview(""); setCompressionInfo(""); if (fileRef.current) fileRef.current.value = ""; }} className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600">
                   <Trash2 size={13} /> Hapus foto
                 </button>
               )}

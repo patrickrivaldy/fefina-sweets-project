@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { formatRupiah } from "@/utils/format";
-import { compressImage } from "@/utils/image";
+import { compressImage, formatFileSize } from "@/utils/image";
 import RupiahInput from "@/components/ui/RupiahInput";
 import { X, ImagePlus, Trash2, Check } from "lucide-react";
 
@@ -18,6 +18,7 @@ export default function EditProductModal({ isOpen, product, onClose, onSubmit, s
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [compressing, setCompressing] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState("");
   const fileRef = useRef(null);
 
   if (!isOpen || !product) return null;
@@ -31,20 +32,19 @@ export default function EditProductModal({ isOpen, product, onClose, onSubmit, s
   };
 
   const pickImage = async (e) => {
-    const f = e.target.files?.[0];
+    const inputEl = e.currentTarget;
+    const f = inputEl.files?.[0];
+    inputEl.value = "";
     if (!f) return;
-    if (!f.type.startsWith("image/")) {
-      setFormError("File harus berupa gambar.");
-      return;
-    }
+
     setCompressing(true);
     setFormError("");
     try {
-      // Kecilkan dulu biar upload cepat & kasir tidak lemot
       const small = await compressImage(f);
       if (preview) URL.revokeObjectURL(preview);
       setImageFile(small);
       setPreview(URL.createObjectURL(small));
+      setCompressionInfo(`${formatFileSize(f.size)} → ${formatFileSize(small.size)}`);
     } catch (err) {
       setFormError(err.message || "Gagal memproses gambar.");
     } finally {
@@ -117,15 +117,18 @@ export default function EditProductModal({ isOpen, product, onClose, onSubmit, s
                   <span className="flex items-center gap-1.5 text-[13px] font-bold text-slate-700">
                     <ImagePlus size={15} /> {preview ? "Ganti foto" : product.foto ? "Ganti / lihat foto" : "Tambah foto"}
                   </span>
-                  <span className="block text-[11px] text-slate-500">Kosongkan bila tidak ingin mengubah.</span>
+                  <span className="block text-[11px] text-slate-500">Foto baru otomatis dikompres. Kosongkan untuk mempertahankan foto lama.</span>
                 </span>
               </button>
-              <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} className="hidden" />
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={pickImage} disabled={submitting || compressing} className="hidden" />
               {compressing && (
                 <p className="mt-2 text-xs font-bold text-emerald-700">Mengecilkan foto…</p>
               )}
+              {compressionInfo && !compressing && (
+                <p className="mt-1 text-[11px] font-medium text-emerald-700">Ukuran foto: {compressionInfo}</p>
+              )}
               {preview && (
-                <button type="button" onClick={() => { setImageFile(null); URL.revokeObjectURL(preview); setPreview(""); }} className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600">
+                <button type="button" onClick={() => { setImageFile(null); URL.revokeObjectURL(preview); setPreview(""); setCompressionInfo(""); }} className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600">
                   <Trash2 size={13} /> Batalkan foto baru
                 </button>
               )}

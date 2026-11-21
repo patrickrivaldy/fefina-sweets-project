@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import EmptyState from "@/components/ui/EmptyState";
@@ -43,6 +43,11 @@ function KasirInner() {
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [addedId, setAddedId] = useState(null);
+  const addFeedbackTimer = useRef(null);
+
+  useEffect(() => () => {
+    if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -88,17 +93,18 @@ function KasirInner() {
   const add = (p) => {
     addToCart(p);
     setAddedId(p.id_produk);
-    setTimeout(() => setAddedId(null), 800);
+    if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current);
+    addFeedbackTimer.current = window.setTimeout(() => setAddedId(null), 800);
   };
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="grid grid-cols-12 items-start gap-5">
+    <div className="flex w-full min-w-0 flex-col gap-3 pb-28 sm:gap-4 xl:gap-5 xl:pb-0">
+      <div className="grid min-w-0 grid-cols-12 items-start gap-3 sm:gap-4 xl:gap-5">
         {/* Kiri: katalog */}
-        <section className="col-span-12 flex flex-col gap-4 xl:col-span-8">
-          <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60">
+        <section className="col-span-12 flex min-w-0 flex-col gap-3 sm:gap-4 xl:col-span-8">
+          <div className="min-w-0 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200/60 sm:p-4">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-              <div className="relative w-full">
+              <div className="relative w-full min-w-0">
                 <Barcode
                   size={18}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -107,7 +113,7 @@ function KasirInner() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Ketik nama produk, SKU, atau scan barcode..."
-                  className="h-11 w-full rounded-lg bg-[#eff4ff] pl-10 pr-10 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/25"
+                  className="h-12 w-full min-w-0 rounded-lg bg-[#eff4ff] pl-10 pr-10 text-base text-slate-800 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-600/25"
                 />
                 {search && (
                   <button
@@ -124,7 +130,7 @@ function KasirInner() {
                 <button
                   type="button"
                   onClick={() => setShowSort(!showSort)}
-                  className="flex h-11 items-center gap-1.5 rounded-lg bg-[#eff4ff] px-4 text-[13px] font-bold text-slate-700 hover:bg-slate-200"
+                  className="flex h-11 min-w-[108px] items-center justify-center gap-1.5 rounded-lg bg-[#eff4ff] px-3 text-[13px] font-bold text-slate-700 hover:bg-slate-200"
                 >
                   <ArrowUpDown size={15} /> Urutkan
                 </button>
@@ -166,9 +172,9 @@ function KasirInner() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 2xl:grid-cols-4">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <div key={i} className="animate-pulse rounded-xl bg-white p-2.5 ring-1 ring-slate-200/60">
+                <div key={i} className="min-w-0 animate-pulse rounded-xl bg-white p-2.5 ring-1 ring-slate-200/60">
                   <div className="aspect-square rounded-lg bg-slate-100" />
                   <div className="mt-2 h-3.5 rounded bg-slate-100" />
                   <div className="mt-2 h-3.5 w-2/3 rounded bg-slate-100" />
@@ -206,14 +212,14 @@ function KasirInner() {
               )}
             />
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 2xl:grid-cols-4">
               {filtered.map((p) => {
                 const done = addedId === p.id_produk;
                 return (
                   <article
                     key={p.id_produk}
                     onClick={() => add(p)}
-                    className={`group flex cursor-pointer flex-col justify-between rounded-xl bg-white p-2.5 shadow-sm transition hover:shadow-md ${
+                    className={`group flex min-w-0 cursor-pointer flex-col justify-between rounded-xl bg-white p-2.5 shadow-sm transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${
                       done ? "ring-2 ring-emerald-600" : "ring-1 ring-slate-200/70"
                     }`}
                   >
@@ -244,12 +250,12 @@ function KasirInner() {
                       <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                         Manisan
                       </p>
-                      <h3 className="truncate text-[15px] font-bold leading-snug group-hover:text-emerald-700" title={p.nama_produk}>
+                      <h3 className="truncate text-sm font-bold leading-snug group-hover:text-emerald-700 sm:text-[15px]" title={p.nama_produk}>
                         {p.nama_produk}
                       </h3>
                     </div>
                     <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
-                      <span className="tnum text-[15px] font-bold text-emerald-700">
+                      <span className="tnum min-w-0 text-xs font-bold text-emerald-700 sm:text-[15px]">
                         {formatRupiah(p.harga_jual)}
                       </span>
                       <button
@@ -259,7 +265,7 @@ function KasirInner() {
                           e.stopPropagation();
                           add(p);
                         }}
-                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${
                           done
                             ? "bg-emerald-600 text-white"
                             : "bg-[#eff4ff] text-emerald-700 group-hover:bg-emerald-700 group-hover:text-white"
@@ -276,7 +282,7 @@ function KasirInner() {
         </section>
 
         {/* Kanan: panel bayar */}
-        <aside className="col-span-12 xl:col-span-4">
+        <aside className="col-span-12 min-w-0 xl:col-span-4">
           <div className="xl:sticky xl:top-20">
             <CartPanel onPaid={() => setRefreshKey((v) => v + 1)} />
           </div>
